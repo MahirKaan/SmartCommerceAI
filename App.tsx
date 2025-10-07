@@ -12,6 +12,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ProductDetailScreen from './src/screens/ProductDetailScreen';
+import CartScreen from './src/screens/CartScreen'; // CartScreen'i import ettim
 
 // Navigation
 import MainTabs from './src/navigation/MainTabs';
@@ -61,6 +62,21 @@ const AppContent = () => {
               component={ProductDetailScreen} 
               options={{ 
                 title: 'Ürün Detay',
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }} 
+            />
+            {/* Cart Screen'i Stack Navigator'a ekledim */}
+            <Stack.Screen 
+              name="Cart" 
+              component={CartScreen}
+              options={{ 
+                title: 'Sepetim',
                 headerStyle: {
                   backgroundColor: '#6366f1',
                 },

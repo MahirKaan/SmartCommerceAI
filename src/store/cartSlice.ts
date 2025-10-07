@@ -12,6 +12,7 @@ export interface Product {
   reviewCount: number;
   inStock: boolean;
   features: string[];
+  discount?: number; // discount property'sini ekledim
 }
 
 export interface CartItem {
@@ -35,17 +36,19 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    addToCart: (state, action: PayloadAction<Product>) => {
+    // DEĞİŞTİRİLDİ: quantity parametresi eklendi
+    addToCart: (state, action: PayloadAction<{ product: Product; quantity: number }>) => {
+      const { product, quantity } = action.payload;
       const existingItem = state.items.find(
-        item => item.product.id === action.payload.id
+        item => item.product.id === product.id
       );
 
       if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity += quantity;
       } else {
         state.items.push({
-          product: action.payload,
-          quantity: 1,
+          product: product,
+          quantity: quantity,
         });
       }
 

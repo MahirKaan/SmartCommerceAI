@@ -9,7 +9,9 @@ import {
   Dimensions,
   Animated,
   Share,
-  Alert
+  Alert,
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../store/cartSlice';
@@ -34,16 +36,18 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     'https://picsum.photos/300/300?random=12'
   ];
 
-  // Scroll handler'ı düzeltildi
-  const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    scrollY.setValue(offsetY);
-  };
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
+  // DÜZELTİLDİ: Artık doğru parametre yapısını kullanıyor
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      dispatch(addToCart(product));
-    }
+    dispatch(addToCart({
+      product: product,
+      quantity: quantity
+    }));
     
     Alert.alert(
       'Başarılı! 🛒',
@@ -61,10 +65,12 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     );
   };
 
+  // DÜZELTİLDİ: Artık doğru parametre yapısını kullanıyor
   const handleBuyNow = () => {
-    for (let i = 0; i < quantity; i++) {
-      dispatch(addToCart(product));
-    }
+    dispatch(addToCart({
+      product: product,
+      quantity: quantity
+    }));
     navigation.navigate('Cart');
   };
 
@@ -89,18 +95,17 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
-    Alert.alert(isFavorite ? 'Favorilerden çıkarıldı' : 'Favorilere eklendi', 
-                `${product.name} ${isFavorite ? 'favorilerden çıkarıldı' : 'favorilere eklendi'}`);
   };
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false }
+  );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#6366f1" barStyle="light-content" />
+      
       {/* Animated Header */}
       <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
         <View style={styles.headerBackground} />
@@ -123,17 +128,17 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll} // Düzeltildi
+        onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {/* Compact Image Gallery */}
+        {/* Image Gallery */}
         <View style={styles.imageSection}>
           <Image 
             source={{ uri: productImages[selectedImage] }} 
             style={styles.mainImage} 
           />
           
-          {/* Enhanced Image Indicators */}
+          {/* Image Indicators */}
           <View style={styles.imageIndicatorsContainer}>
             <ScrollView 
               horizontal 
@@ -160,50 +165,42 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           </View>
         </View>
 
-        {/* Enhanced Product Info */}
+        {/* Product Info */}
         <View style={styles.content}>
-          {/* Premium Badges */}
+          {/* Badges */}
           <View style={styles.badgesContainer}>
             <View style={styles.badgesRow}>
               {product.discount && (
                 <View style={styles.discountBadge}>
-                  <Text style={styles.discountBadgeText}>🔥 %{product.discount}</Text>
+                  <Text style={styles.discountBadgeText}>%{product.discount} İndirim</Text>
                 </View>
               )}
-              {product.isNew && (
-                <View style={styles.newBadge}>
-                  <Text style={styles.newBadgeText}>🆕 Yeni</Text>
-                </View>
-              )}
-              {product.isBestSeller && (
-                <View style={styles.bestSellerBadge}>
-                  <Text style={styles.bestSellerBadgeText}>🏆 Çok Satan</Text>
-                </View>
-              )}
+              <View style={styles.stockBadge}>
+                <Text style={styles.stockBadgeText}>
+                  {product.inStock !== false ? '✅ Stokta' : '❌ Tükendi'}
+                </Text>
+              </View>
             </View>
-            <View style={[
-              styles.stockBadge,
-              product.inStock ? styles.inStockBadge : styles.outOfStockBadge
-            ]}>
-              <Text style={styles.stockBadgeText}>
-                {product.inStock ? '✅ Stokta' : '❌ Tükendi'}
+            <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
+              <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteActive]}>
+                {isFavorite ? '❤️' : '🤍'}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
-          {/* Enhanced Product Title */}
+          {/* Product Title */}
           <View style={styles.titleSection}>
             <Text style={styles.productName}>{product.name}</Text>
             <Text style={styles.productCategory}>#{product.category}</Text>
           </View>
 
-          {/* Premium Price Section */}
+          {/* Price Section */}
           <View style={styles.priceSection}>
             <View style={styles.priceMain}>
-              <Text style={styles.currentPrice}>₺{product.price.toLocaleString()}</Text>
+              <Text style={styles.currentPrice}>₺{product.price.toLocaleString('tr-TR')}</Text>
               {product.originalPrice && (
                 <View style={styles.originalPriceContainer}>
-                  <Text style={styles.originalPrice}>₺{product.originalPrice.toLocaleString()}</Text>
+                  <Text style={styles.originalPrice}>₺{product.originalPrice.toLocaleString('tr-TR')}</Text>
                   {product.discount && (
                     <Text style={styles.discountPercent}>%{product.discount}</Text>
                   )}
@@ -212,33 +209,25 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
             </View>
             {product.discount && product.originalPrice && (
               <View style={styles.savingsContainer}>
-                <Text style={styles.savingsIcon}>💸</Text>
                 <Text style={styles.savingsText}>
-                  ₺{(product.originalPrice - product.price).toLocaleString()} tasarruf
+                  ₺{(product.originalPrice - product.price).toLocaleString('tr-TR')} tasarruf
                 </Text>
               </View>
             )}
           </View>
 
-          {/* Enhanced Rating & Actions */}
-          <View style={styles.ratingActionsSection}>
+          {/* Rating */}
+          <View style={styles.ratingSection}>
             <View style={styles.ratingContainer}>
-              <View style={styles.ratingStars}>
-                <Text style={styles.ratingIcon}>⭐</Text>
-                <Text style={styles.ratingValue}>{product.rating}</Text>
-                <Text style={styles.reviews}>({product.reviewCount})</Text>
-              </View>
-              <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
-                <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteActive]}>
-                  {isFavorite ? '❤️' : '🤍'}
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.ratingIcon}>⭐</Text>
+              <Text style={styles.ratingValue}>{product.rating || '4.5'}</Text>
+              <Text style={styles.reviews}>({product.reviewCount || '124'} değerlendirme)</Text>
             </View>
           </View>
 
-          {/* Smart Quantity Selector */}
+          {/* Quantity Selector - ŞİMDİ ÇALIŞACAK! */}
           <View style={styles.quantitySection}>
-            <Text style={styles.quantityLabel}>Adet Seçin:</Text>
+            <Text style={styles.quantityLabel}>Adet:</Text>
             <View style={styles.quantitySelector}>
               <TouchableOpacity 
                 style={[styles.quantityButton, quantity <= 1 && styles.quantityButtonDisabled]}
@@ -260,69 +249,46 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
             </View>
           </View>
 
-          {/* Quick Actions */}
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction}>
-              <Text style={styles.quickActionIcon}>🚚</Text>
-              <Text style={styles.quickActionText}>Ücretsiz Kargo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction}>
-              <Text style={styles.quickActionIcon}>↩️</Text>
-              <Text style={styles.quickActionText}>30 Gün İade</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction}>
-              <Text style={styles.quickActionIcon}>🔒</Text>
-              <Text style={styles.quickActionText}>Güvenli Alışveriş</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Enhanced Description */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>📝</Text>
-              <Text style={styles.sectionTitle}>Ürün Detayları</Text>
+          {/* Quick Features */}
+          <View style={styles.featuresSection}>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>🚚</Text>
+              <Text style={styles.featureText}>Ücretsiz Kargo</Text>
             </View>
-            <Text style={styles.description}>{product.description}</Text>
-          </View>
-
-          {/* Premium Features */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>✨</Text>
-              <Text style={styles.sectionTitle}>Öne Çıkan Özellikler</Text>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>↩️</Text>
+              <Text style={styles.featureText}>30 Gün İade</Text>
             </View>
-            <View style={styles.featuresGrid}>
-              {product.features.map((feature: string, index: number) => (
-                <View key={index} style={styles.featureCard}>
-                  <Text style={styles.featureIcon}>✓</Text>
-                  <Text style={styles.featureText}>{feature}</Text>
-                </View>
-              ))}
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>🛡️</Text>
+              <Text style={styles.featureText}>2 Yıl Garanti</Text>
             </View>
           </View>
 
-          {/* Smart AI Section */}
+          {/* Description */}
+          <View style={styles.descriptionSection}>
+            <Text style={styles.sectionTitle}>Ürün Açıklaması</Text>
+            <Text style={styles.description}>
+              {product.description || 'Bu ürün yüksek kalite standartlarında üretilmiştir. Müşteri memnuniyeti garantilidir.'}
+            </Text>
+          </View>
+
+          {/* AI Recommendation */}
           <View style={styles.aiSection}>
             <View style={styles.aiHeader}>
-              <View style={styles.aiIconContainer}>
-                <Text style={styles.aiIcon}>🤖</Text>
-              </View>
+              <Text style={styles.aiIcon}>🤖</Text>
               <View>
-                <Text style={styles.aiTitle}>SmartCommerce AI Analizi</Text>
-                <Text style={styles.aiSubtitle}>Akıllı alışveriş asistanı öneriyor</Text>
+                <Text style={styles.aiTitle}>SmartCommerce AI Önerisi</Text>
+                <Text style={styles.aiSubtitle}>Akıllı alışveriş asistanı</Text>
               </View>
             </View>
-            <View style={styles.aiContent}>
-              <Text style={styles.aiText}>
-                {product.rating >= 4.5 ? '🏆 ' : '⭐ '}
-                {product.rating >= 4.5 
-                  ? 'Mükemmel puanlı ürün! Kullanıcıların %95\'i memnun.'
-                  : 'Kaliteli ürün! Güvenle alabilirsiniz.'
-                }
-                {product.discount && ' 🎯 Şu an indirim fırsatını kaçırmayın!'}
-                {'\n'}📊 Son {product.reviewCount} kişi değerlendirdi.
-              </Text>
-            </View>
+            <Text style={styles.aiText}>
+              {product.rating >= 4.5 ? '🏆 ' : '⭐ '}
+              {product.rating >= 4.5 
+                ? 'Mükemmel puanlı ürün! Kullanıcıların %95\'i memnun.'
+                : 'Kaliteli ürün! Güvenle alabilirsiniz.'
+              }
+            </Text>
           </View>
 
           {/* Bottom Spacer */}
@@ -330,49 +296,49 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         </View>
       </ScrollView>
 
-      {/* Enhanced Fixed Action Buttons */}
+      {/* Action Buttons */}
       <View style={styles.actionBar}>
         <View style={styles.priceSummary}>
           <Text style={styles.totalLabel}>Toplam:</Text>
-          <Text style={styles.totalPrice}>₺{(product.price * quantity).toLocaleString()}</Text>
+          <Text style={styles.totalPrice}>₺{(product.price * quantity).toLocaleString('tr-TR')}</Text>
         </View>
         <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={[
               styles.addToCartButton,
-              !product.inStock && styles.disabledButton
+              product.inStock === false && styles.disabledButton
             ]} 
             onPress={handleAddToCart}
-            disabled={!product.inStock}
+            disabled={product.inStock === false}
           >
-            <Text style={styles.addToCartIcon}>🛒</Text>
             <Text style={styles.addToCartText}>
-              {product.inStock ? 'Sepete Ekle' : 'Stokta Yok'}
+              {product.inStock !== false ? 'Sepete Ekle' : 'Stokta Yok'}
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={[
               styles.buyNowButton,
-              !product.inStock && styles.disabledButton
+              product.inStock === false && styles.disabledButton
             ]} 
             onPress={handleBuyNow}
-            disabled={!product.inStock}
+            disabled={product.inStock === false}
           >
             <Text style={styles.buyNowText}>
-              {product.inStock ? 'Hemen Al' : 'Stokta Yok'}
+              {product.inStock !== false ? 'Hemen Al' : 'Stokta Yok'}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
+// Styles aynı kalıyor...
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f8fafc',
   },
   header: {
     position: 'absolute',
@@ -430,12 +396,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageSection: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     paddingBottom: 16,
   },
   mainImage: {
     width: '100%',
-    height: 280, // Küçültüldü
+    height: 380,
     resizeMode: 'cover',
   },
   imageIndicatorsContainer: {
@@ -448,8 +414,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   imageIndicator: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
     borderRadius: 12,
     marginRight: 8,
     borderWidth: 2,
@@ -465,7 +431,11 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   content: {
-    padding: 16,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
   },
   badgesContainer: {
     flexDirection: 'row',
@@ -479,87 +449,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   discountBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#fef3c7',
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 8,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
   },
   discountBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#92400E',
-  },
-  newBadge: {
-    backgroundColor: '#DCFCE7',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#10B981',
-  },
-  newBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#166534',
-  },
-  bestSellerBadge: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-  },
-  bestSellerBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#991B1B',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400e',
   },
   stockBadge: {
+    backgroundColor: '#dcfce7',
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderWidth: 1,
-  },
-  inStockBadge: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#10B981',
-  },
-  outOfStockBadge: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#EF4444',
+    marginRight: 8,
+    marginBottom: 8,
   },
   stockBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#166534',
+  },
+  favoriteButton: {
+    padding: 8,
+  },
+  favoriteIcon: {
+    fontSize: 24,
+  },
+  favoriteActive: {
+    color: '#ef4444',
   },
   titleSection: {
     marginBottom: 16,
   },
   productName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: 4,
-    lineHeight: 28,
+    lineHeight: 32,
   },
   productCategory: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6366f1',
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   priceSection: {
-    marginBottom: 20,
-    backgroundColor: '#F8FAFC',
+    marginBottom: 16,
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 16,
   },
@@ -570,7 +512,7 @@ const styles = StyleSheet.create({
   },
   currentPrice: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#6366f1',
     marginRight: 12,
   },
@@ -580,45 +522,35 @@ const styles = StyleSheet.create({
   },
   originalPrice: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: '#64748b',
     textDecorationLine: 'line-through',
     marginRight: 6,
   },
   discountPercent: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#EF4444',
-    backgroundColor: '#FEE2E2',
+    fontWeight: '600',
+    color: '#ef4444',
+    backgroundColor: '#fef2f2',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   savingsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     alignSelf: 'flex-start',
-  },
-  savingsIcon: {
-    marginRight: 6,
   },
   savingsText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#166534',
   },
-  ratingActionsSection: {
+  ratingSection: {
     marginBottom: 20,
   },
   ratingContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ratingStars: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -628,64 +560,53 @@ const styles = StyleSheet.create({
   },
   ratingValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '600',
+    color: '#1e293b',
     marginRight: 6,
   },
   reviews: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  favoriteButton: {
-    padding: 8,
-  },
-  favoriteIcon: {
-    fontSize: 20,
-  },
-  favoriteActive: {
-    color: '#EF4444',
+    fontSize: 14,
+    color: '#64748b',
   },
   quantitySection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#f1f5f9',
   },
   quantityLabel: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1e293b',
   },
   quantitySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#F3F4F6',
     padding: 4,
   },
   quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: '#6366f1',
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityButtonDisabled: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#e2e8f0',
   },
   quantityButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: '#ffffff',
   },
   quantityButtonTextDisabled: {
-    color: '#9CA3AF',
+    color: '#94a3b8',
   },
   quantityDisplay: {
     minWidth: 40,
@@ -693,72 +614,44 @@ const styles = StyleSheet.create({
   },
   quantityValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '600',
+    color: '#1e293b',
   },
-  quickActions: {
+  featuresSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  quickAction: {
+  featureItem: {
     alignItems: 'center',
     flex: 1,
   },
-  quickActionIcon: {
+  featureIcon: {
     fontSize: 20,
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  quickActionText: {
-    fontSize: 11,
-    color: '#6B7280',
+  featureText: {
+    fontSize: 12,
+    color: '#475569',
     fontWeight: '500',
     textAlign: 'center',
   },
-  section: {
+  descriptionSection: {
     marginBottom: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
   },
   description: {
     fontSize: 15,
-    color: '#6B7280',
     lineHeight: 22,
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-  },
-  featureCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '50%',
-    paddingHorizontal: 6,
-    marginBottom: 12,
-  },
-  featureIcon: {
-    fontSize: 14,
-    color: '#10B981',
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#6B7280',
-    flex: 1,
+    color: '#475569',
   },
   aiSection: {
     backgroundColor: 'rgba(99, 102, 241, 0.05)',
@@ -773,37 +666,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  aiIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#6366f1',
-    justifyContent: 'center',
-    alignItems: 'center',
+  aiIcon: {
+    fontSize: 20,
     marginRight: 12,
   },
-  aiIcon: {
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
   aiTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   aiSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
-  },
-  aiContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
+    color: '#64748b',
   },
   aiText: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
   },
   bottomSpacer: {
     height: 100,
@@ -814,15 +693,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     paddingBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 8,
   },
   priceSummary: {
@@ -832,53 +711,45 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   totalLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '600',
   },
   totalPrice: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#6366f1',
   },
   actionButtons: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 12,
   },
   addToCartButton: {
     flex: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#6366f1',
     borderRadius: 12,
-    paddingVertical: 14,
-    marginRight: 12,
-  },
-  addToCartIcon: {
-    fontSize: 16,
-    marginRight: 6,
-    color: '#FFFFFF',
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   addToCartText: {
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   buyNowButton: {
     flex: 1,
-    backgroundColor: '#10B981',
+    backgroundColor: '#10b981',
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   buyNowText: {
-    fontSize: 15,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   disabledButton: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: '#94a3b8',
   },
 });
 
