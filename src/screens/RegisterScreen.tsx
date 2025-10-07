@@ -16,7 +16,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { loginUser } from '../store/authSlice';
+import { registerUser } from '../store/authSlice';
 import { RootState, AppDispatch } from '../store';
 
 const { width } = Dimensions.get('window');
@@ -27,15 +27,21 @@ type RootStackParamList = {
   Home: undefined;
 };
 
-type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
+type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
 
-const LoginScreen = () => {
+const RegisterScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isFocused, setIsFocused] = useState({ email: false, password: false });
+  const [displayName, setDisplayName] = useState('');
+  const [isFocused, setIsFocused] = useState({ 
+    displayName: false, 
+    email: false, 
+    password: false 
+  });
+  
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const navigation = useNavigation<RegisterScreenNavigationProp>();
 
   // Animasyon değerleri
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -70,13 +76,18 @@ const LoginScreen = () => {
     }
   }, [error]);
 
-  const handleLogin = () => {
-    if (!email || !password) {
+  const handleRegister = () => {
+    if (!email || !password || !displayName) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
 
-    dispatch(loginUser({ email, password }));
+    if (password.length < 6) {
+      Alert.alert('Hata', 'Şifre en az 6 karakter olmalı');
+      return;
+    }
+
+    dispatch(registerUser({ email, password, displayName }));
   };
 
   return (
@@ -105,11 +116,11 @@ const LoginScreen = () => {
           {/* Logo Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoIcon}>🛍️</Text>
+              <Text style={styles.logoIcon}>🚀</Text>
               <View style={styles.logoGlow} />
             </View>
-            <Text style={styles.welcomeText}>Tekrar Hoş Geldin</Text>
-            <Text style={styles.subtitle}>Hesabına giriş yap ve alışverişe devam et</Text>
+            <Text style={styles.welcomeText}>Yeni Hesap Oluştur</Text>
+            <Text style={styles.subtitle}>AI destekli alışveriş deneyimine başla</Text>
           </View>
 
           {/* Error Message */}
@@ -127,6 +138,24 @@ const LoginScreen = () => {
 
           {/* Form Container */}
           <View style={styles.formContainer}>
+            {/* Display Name Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Ad Soyad</Text>
+              <TextInput
+                placeholder="Ali Yılmaz"
+                placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                value={displayName}
+                onChangeText={setDisplayName}
+                style={[
+                  styles.input,
+                  isFocused.displayName && styles.inputFocused
+                ]}
+                autoCapitalize="words"
+                onFocus={() => setIsFocused(prev => ({ ...prev, displayName: true }))}
+                onBlur={() => setIsFocused(prev => ({ ...prev, displayName: false }))}
+              />
+            </View>
+
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>E-posta Adresi</Text>
@@ -162,27 +191,40 @@ const LoginScreen = () => {
                 onFocus={() => setIsFocused(prev => ({ ...prev, password: true }))}
                 onBlur={() => setIsFocused(prev => ({ ...prev, password: false }))}
               />
+              <Text style={styles.passwordHint}>En az 6 karakter</Text>
             </View>
 
-            {/* Forgot Password */}
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Şifreni mi unuttun?</Text>
-            </TouchableOpacity>
+            {/* Benefits List */}
+            <View style={styles.benefitsContainer}>
+              <Text style={styles.benefitsTitle}>Hesap açmanın avantajları:</Text>
+              <View style={styles.benefitItem}>
+                <Text style={styles.benefitIcon}>🎯</Text>
+                <Text style={styles.benefitText}>Kişiselleştirilmiş AI önerileri</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Text style={styles.benefitIcon}>💾</Text>
+                <Text style={styles.benefitText}>Sepet ve favori kaydı</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Text style={styles.benefitIcon}>⚡</Text>
+                <Text style={styles.benefitText}>Hızlı ödeme ve takip</Text>
+              </View>
+            </View>
 
-            {/* Login Button */}
+            {/* Register Button */}
             <TouchableOpacity
-              onPress={handleLogin}
+              onPress={handleRegister}
               disabled={isLoading}
               style={[
-                styles.loginButton,
-                isLoading && styles.loginButtonDisabled
+                styles.registerButton,
+                isLoading && styles.registerButtonDisabled
               ]}
             >
               <View style={styles.buttonContent}>
-                <Text style={styles.loginButtonText}>
-                  {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
+                <Text style={styles.registerButtonText}>
+                  {isLoading ? 'Hesap Oluşturuluyor...' : 'Hesap Oluştur'}
                 </Text>
-                {!isLoading && <Text style={styles.buttonArrow}>→</Text>}
+                {!isLoading && <Text style={styles.buttonArrow}>✨</Text>}
               </View>
             </TouchableOpacity>
           </View>
@@ -194,20 +236,20 @@ const LoginScreen = () => {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Register Link */}
+          {/* Login Link */}
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Register')}
-            style={styles.registerContainer}
+            onPress={() => navigation.navigate('Login')}
+            style={styles.loginContainer}
           >
-            <Text style={styles.registerText}>
-              Hesabın yok mu? <Text style={styles.registerHighlight}>Hemen Kayıt Ol</Text>
+            <Text style={styles.loginText}>
+              Zaten hesabın var mı? <Text style={styles.loginHighlight}>Giriş Yap</Text>
             </Text>
           </TouchableOpacity>
 
           {/* Security Badge */}
           <View style={styles.securityBadge}>
             <Text style={styles.securityIcon}>🔒</Text>
-            <Text style={styles.securityText}>256-bit şifreleme ile korunuyor</Text>
+            <Text style={styles.securityText}>Verileriniz 256-bit şifreleme ile korunuyor</Text>
           </View>
         </Animated.View>
       </ScrollView>
@@ -336,16 +378,41 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
+  passwordHint: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    marginTop: 6,
+    fontWeight: '500',
   },
-  forgotPasswordText: {
-    color: 'rgba(255, 255, 255, 0.8)',
+  benefitsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  benefitsTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  benefitIcon: {
+    marginRight: 12,
+    fontSize: 16,
+  },
+  benefitText: {
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
     fontWeight: '500',
   },
-  loginButton: {
+  registerButton: {
     backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 16,
@@ -355,7 +422,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-  loginButtonDisabled: {
+  registerButtonDisabled: {
     opacity: 0.7,
   },
   buttonContent: {
@@ -363,7 +430,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loginButtonText: {
+  registerButtonText: {
     color: '#6366f1',
     fontSize: 18,
     fontWeight: '700',
@@ -390,19 +457,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  registerContainer: {
+  loginContainer: {
     alignItems: 'center',
     marginBottom: 40,
     padding: 16,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  registerText: {
+  loginText: {
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 16,
     fontWeight: '500',
   },
-  registerHighlight: {
+  loginHighlight: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
@@ -426,4 +493,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+export default RegisterScreen;
