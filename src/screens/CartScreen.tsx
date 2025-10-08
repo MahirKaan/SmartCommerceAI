@@ -8,11 +8,120 @@ import {
   Image, 
   Alert,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { removeFromCart, updateQuantity, clearCart } from '../store/cartSlice';
+
+// Image Loader Component
+const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [hasError, setHasError] = React.useState(false);
+
+  const handleLoadStart = () => {
+    setIsLoading(true);
+    setHasError(false);
+  };
+
+  const handleLoadEnd = () => {
+    setIsLoading(false);
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
+  return (
+    <View style={style}>
+      {!hasError ? (
+        <>
+          <Image
+            source={{ uri: source }}
+            style={[style, { position: 'absolute' }]}
+            resizeMode={resizeMode}
+            onLoadStart={handleLoadStart}
+            onLoadEnd={handleLoadEnd}
+            onError={handleError}
+          />
+          {isLoading && (
+            <View style={[style, styles.imagePlaceholder]}>
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text style={styles.loadingText}>Resim Yükleniyor...</Text>
+            </View>
+          )}
+        </>
+      ) : (
+        <View style={[style, styles.imagePlaceholder]}>
+          <Text style={styles.placeholderText}>📷</Text>
+          <Text style={styles.placeholderSubtext}>Resim Yüklenemedi</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setHasError(false);
+              setIsLoading(true);
+            }}
+          >
+            <Text style={styles.retryText}>🔄 Tekrar Dene</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
+// AI Sepet Analizi Fonksiyonu
+const analyzeCart = (items: any[]) => {
+  if (items.length === 0) {
+    return {
+      message: '🛒 Sepetiniz boş',
+      suggestion: 'Hemen alışverişe başlayın!',
+      color: '#64748b'
+    };
+  }
+
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalValue = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const totalSavings = items.reduce((sum, item) => {
+    if (item.product.originalPrice) {
+      return sum + ((item.product.originalPrice - item.product.price) * item.quantity);
+    }
+    return sum;
+  }, 0);
+
+  let message = '';
+  let suggestion = '';
+  let color = '#6366f1';
+
+  if (totalValue > 10000) {
+    message = '💰 Premium Alışveriş!';
+    suggestion = 'Yüksek bütçeli bir sepetiniz var.';
+    color = '#8b5cf6';
+  } else if (totalValue > 5000) {
+    message = '⭐ Kaliteli Sepet!';
+    suggestion = 'Orta bütçeli kaliteli ürünler.';
+    color = '#10b981';
+  } else {
+    message = '🎯 Akıllı Alışveriş!';
+    suggestion = 'Bütçe dostu harika seçimler.';
+    color = '#6366f1';
+  }
+
+  if (totalSavings > 1000) {
+    suggestion += ` 🎉 ${totalSavings.toLocaleString('tr-TR')} TL tasarruf!`;
+  }
+
+  return {
+    message,
+    suggestion,
+    color,
+    totalItems,
+    totalValue,
+    totalSavings
+  };
+};
 
 const CartScreen = ({ navigation }: any) => {
   const dispatch = useDispatch();
@@ -21,6 +130,8 @@ const CartScreen = ({ navigation }: any) => {
   const items = cart?.items || [];
   const total = cart?.total || 0;
   const itemCount = cart?.itemCount || 0;
+
+  const cartAnalysis = analyzeCart(items);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity < 1) {
@@ -66,15 +177,26 @@ const CartScreen = ({ navigation }: any) => {
     if (items.length === 0) return;
     
     Alert.alert(
-      'Ödemeye Geç',
-      'Güvenli ödeme sayfasına yönlendiriliyorsunuz.',
+      '🤖 SmartCommerce AI Önerisi',
+      `Toplam ${itemCount} ürün için ${total.toLocaleString('tr-TR')} TL ödeme yapacaksınız.\n\nAI Asistanı: Bu harika bir alışveriş! 🎉`,
       [
         { text: 'İptal', style: 'cancel' },
         { 
-          text: 'Devam Et', 
+          text: 'Ödemeye Geç', 
           onPress: () => {
-            Alert.alert('Başarılı', 'Ödeme işleminiz tamamlandı!');
-            dispatch(clearCart());
+            Alert.alert(
+              '✅ Ödeme Başarılı!',
+              `Siparişiniz alındı! ${total.toLocaleString('tr-TR')} TL tutarındaki alışverişiniz için teşekkür ederiz.`,
+              [
+                {
+                  text: 'Tamam',
+                  onPress: () => {
+                    dispatch(clearCart());
+                    navigation.navigate('MainTabs', { screen: 'Home' });
+                  }
+                }
+              ]
+            );
           }
         },
       ]
@@ -85,29 +207,30 @@ const CartScreen = ({ navigation }: any) => {
     navigation.navigate('MainTabs', { screen: 'Products' });
   };
 
-  const calculateSavings = () => {
-    return items.reduce((savings, item) => {
-      if (item.product.originalPrice) {
-        return savings + ((item.product.originalPrice - item.product.price) * item.quantity);
-      }
-      return savings;
-    }, 0);
+  const handleAIAssistant = () => {
+    Alert.alert(
+      '🤖 Sepet Analizi',
+      `AI Asistanı raporu:\n\n• ${itemCount} ürün\n• ${total.toLocaleString('tr-TR')} TL toplam\n• ${cartAnalysis.totalSavings.toLocaleString('tr-TR')} TL tasarruf\n\n${cartAnalysis.suggestion}`,
+      [{ text: 'Harika!', style: 'default' }]
+    );
   };
-
-  const savings = calculateSavings();
 
   const renderCartItem = ({ item }: any) => (
     <View style={styles.cartItem}>
-      <Image 
-        source={{ uri: item.product.image }} 
+      <ProductImage 
+        source={item.product.image} 
         style={styles.productImage}
+        resizeMode="cover"
       />
       
       <View style={styles.productInfo}>
         <View style={styles.productHeader}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.product.name}
-          </Text>
+          <View style={styles.productTitleContainer}>
+            <Text style={styles.productBrand}>{item.product.brand || 'Marka'}</Text>
+            <Text style={styles.productName} numberOfLines={2}>
+              {item.product.name}
+            </Text>
+          </View>
           <TouchableOpacity 
             style={styles.removeButton}
             onPress={() => handleRemoveItem(item.product.id)}
@@ -125,6 +248,11 @@ const CartScreen = ({ navigation }: any) => {
               ₺{(item.product.originalPrice * item.quantity).toLocaleString('tr-TR')}
             </Text>
           )}
+          {item.product.discount && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountBadgeText}>%{item.product.discount}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.quantityContainer}>
@@ -134,19 +262,20 @@ const CartScreen = ({ navigation }: any) => {
             disabled={item.quantity === 1}
           >
             <Text style={[styles.quantityButtonText, item.quantity === 1 && styles.quantityButtonTextDisabled]}>
-              ➖
+              −
             </Text>
           </TouchableOpacity>
           
           <View style={styles.quantityDisplay}>
             <Text style={styles.quantity}>{item.quantity}</Text>
+            <Text style={styles.quantityUnit}>adet</Text>
           </View>
           
           <TouchableOpacity 
             style={styles.quantityButton}
             onPress={() => handleQuantityChange(item.product.id, item.quantity + 1)}
           >
-            <Text style={styles.quantityButtonText}>➕</Text>
+            <Text style={styles.quantityButtonText}>+</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -167,6 +296,19 @@ const CartScreen = ({ navigation }: any) => {
             Henüz sepetinize ürün eklemediniz.{'\n'}
             Hemen alışverişe başlayın!
           </Text>
+
+          {/* AI Öneri Butonu */}
+          <TouchableOpacity 
+            style={styles.aiSuggestionButton}
+            onPress={handleAIAssistant}
+          >
+            <Text style={styles.aiSuggestionIcon}>🤖</Text>
+            <View style={styles.aiSuggestionText}>
+              <Text style={styles.aiSuggestionTitle}>AI Asistanı Önerisi</Text>
+              <Text style={styles.aiSuggestionSubtitle}>Size özel ürünler için tıklayın</Text>
+            </View>
+            <Text style={styles.aiSuggestionArrow}>›</Text>
+          </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.shopButton}
@@ -206,6 +348,21 @@ const CartScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
         
+        {/* AI Sepet Analizi */}
+        <TouchableOpacity 
+          style={[styles.aiAnalysisCard, { backgroundColor: cartAnalysis.color }]}
+          onPress={handleAIAssistant}
+        >
+          <View style={styles.aiAnalysisContent}>
+            <Text style={styles.aiAnalysisIcon}>🤖</Text>
+            <View style={styles.aiAnalysisText}>
+              <Text style={styles.aiAnalysisTitle}>{cartAnalysis.message}</Text>
+              <Text style={styles.aiAnalysisSubtitle}>{cartAnalysis.suggestion}</Text>
+            </View>
+            <Text style={styles.aiAnalysisArrow}>›</Text>
+          </View>
+        </TouchableOpacity>
+        
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
@@ -218,7 +375,7 @@ const CartScreen = ({ navigation }: any) => {
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Tasarruf</Text>
             <Text style={[styles.statValue, styles.savingsValue]}>
-              {savings > 0 ? `₺${savings.toLocaleString('tr-TR')}` : 'Yok'}
+              {cartAnalysis.totalSavings > 0 ? `₺${cartAnalysis.totalSavings.toLocaleString('tr-TR')}` : 'Yok'}
             </Text>
           </View>
           
@@ -246,6 +403,21 @@ const CartScreen = ({ navigation }: any) => {
 
       {/* Fixed Footer */}
       <View style={styles.footer}>
+        <View style={styles.footerSummary}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Ara Toplam:</Text>
+            <Text style={styles.summaryValue}>₺{total.toLocaleString('tr-TR')}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Kargo:</Text>
+            <Text style={[styles.summaryValue, styles.freeShipping]}>ÜCRETSİZ</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>GENEL TOPLAM:</Text>
+            <Text style={styles.totalValue}>₺{total.toLocaleString('tr-TR')}</Text>
+          </View>
+        </View>
+        
         <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={styles.continueButton}
@@ -338,6 +510,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  aiAnalysisCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  aiAnalysisContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiAnalysisIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  aiAnalysisText: {
+    flex: 1,
+  },
+  aiAnalysisTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  aiAnalysisSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  aiAnalysisArrow: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -379,7 +583,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   footerSpacer: {
-    height: 90,
+    height: 160,
   },
   cartItem: {
     flexDirection: 'row',
@@ -400,10 +604,43 @@ const styles = StyleSheet.create({
     borderColor: '#f1f5f9',
   },
   productImage: {
-    width: 60,
-    height: 60,
+    width: 70,
+    height: 70,
     borderRadius: 8,
     backgroundColor: '#f8fafc',
+  },
+  imagePlaceholder: {
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  loadingText: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  placeholderText: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  placeholderSubtext: {
+    fontSize: 8,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  retryText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   productInfo: {
     flex: 1,
@@ -413,6 +650,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  productTitleContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  productBrand: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
     marginBottom: 2,
   },
   productName: {
@@ -420,8 +667,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e293b',
     lineHeight: 18,
-    flex: 1,
-    marginRight: 8,
   },
   removeButton: {
     width: 24,
@@ -441,7 +686,7 @@ const styles = StyleSheet.create({
     color: '#6366f1',
     fontWeight: '600',
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   priceRow: {
     flexDirection: 'row',
@@ -458,13 +703,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     textDecorationLine: 'line-through',
+    marginRight: 8,
+  },
+  discountBadge: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  discountBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#92400e',
   },
   quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
     borderRadius: 8,
-    padding: 2,
+    padding: 4,
     alignSelf: 'flex-start',
   },
   quantityButton: {
@@ -487,7 +744,7 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
   },
   quantityDisplay: {
-    minWidth: 30,
+    minWidth: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -496,13 +753,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e293b',
   },
+  quantityUnit: {
+    fontSize: 9,
+    color: '#64748b',
+    marginTop: 1,
+  },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
-    padding: 12,
+    padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     shadowColor: '#000',
@@ -514,6 +776,45 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  footerSummary: {
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  summaryValue: {
+    fontSize: 13,
+    color: '#1e293b',
+    fontWeight: '600',
+  },
+  freeShipping: {
+    color: '#10b981',
+    fontWeight: '700',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: '#1e293b',
+    fontWeight: '700',
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#6366f1',
+  },
   actionButtons: {
     flexDirection: 'row',
     gap: 10,
@@ -524,7 +825,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#6366f1',
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   continueButtonText: {
@@ -536,7 +837,7 @@ const styles = StyleSheet.create({
     flex: 2,
     backgroundColor: '#6366f1',
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -601,9 +902,42 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     color: '#64748b',
-    marginBottom: 24,
+    marginBottom: 20,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  aiSuggestionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+  },
+  aiSuggestionIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  aiSuggestionText: {
+    flex: 1,
+  },
+  aiSuggestionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6366f1',
+    marginBottom: 2,
+  },
+  aiSuggestionSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  aiSuggestionArrow: {
+    fontSize: 16,
+    color: '#6366f1',
+    fontWeight: '600',
   },
   shopButton: {
     backgroundColor: '#6366f1',

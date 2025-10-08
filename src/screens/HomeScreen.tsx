@@ -12,14 +12,15 @@ import {
   Modal,
   TextInput,
   Animated,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 
 const { width, height } = Dimensions.get('window');
 
-// Gerçek ürün verileri
+// GERÇEK ÜRÜN VERİLERİ - ÇALIŞAN RESİMLERLE
 const featuredProducts = [
   {
     id: '1',
@@ -31,7 +32,10 @@ const featuredProducts = [
     discount: 7,
     category: 'Elektronik',
     features: ['5G', 'Face ID', '120Hz', 'USB-C'],
-    description: 'Yeni A17 Pro çipi ile en gelişmiş iPhone'
+    description: 'Yeni A17 Pro çipi ile en gelişmiş iPhone',
+    brand: 'Apple',
+    inStock: true,
+    fastDelivery: true
   },
   {
     id: '2', 
@@ -43,7 +47,10 @@ const featuredProducts = [
     discount: 10,
     category: 'Elektronik',
     features: ['M3 Çip', '18 Saat Pil', 'Retina Ekran'],
-    description: 'M3 çipli inanılmaz derecede ince ve hızlı dizüstü bilgisayar'
+    description: 'M3 çipli inanılmaz derecede ince ve hızlı dizüstü bilgisayar',
+    brand: 'Apple',
+    inStock: true,
+    fastDelivery: true
   },
   {
     id: '3',
@@ -55,7 +62,10 @@ const featuredProducts = [
     discount: 11,
     category: 'Elektronik',
     features: ['Gürültü Önleme', '24 Saat Pil', 'USB-C'],
-    description: 'Gelişmiş aktif gürültü engelleme özellikli kulaklık'
+    description: 'Gelişmiş aktif gürültü engelleme özellikli kulaklık',
+    brand: 'Apple',
+    inStock: true,
+    fastDelivery: true
   },
   {
     id: '4',
@@ -67,7 +77,10 @@ const featuredProducts = [
     discount: 7,
     category: 'Elektronik',
     features: ['M2 Çip', 'Liquid Retina', 'Apple Pencil'],
-    description: 'M2 çipli yeni nesil iPad'
+    description: 'M2 çipli yeni nesil iPad',
+    brand: 'Apple',
+    inStock: true,
+    fastDelivery: false
   },
   {
     id: '5',
@@ -79,19 +92,25 @@ const featuredProducts = [
     discount: 6,
     category: 'Elektronik',
     features: ['GPS', 'Kardiyo Takip', 'Su Geçirmez'],
-    description: 'Akıllı saatin en gelişmiş modeli'
+    description: 'Akıllı saatin en gelişmiş modeli',
+    brand: 'Apple',
+    inStock: true,
+    fastDelivery: true
   },
   {
     id: '6',
     name: 'Samsung Galaxy S24 Ultra',
     price: 48999,
     originalPrice: 52999,
-    image: 'https://images.samsung.com/tr/smartphones/galaxy-s24-ultra/images/galaxy-s24-ultra_highlights_kv.jpg',
+    image: 'https://images.samsung.com/is/image/samsung/assets/tr/2401/pcd/gallery/S24-Ultra-Bronze-1.jpg',
     rating: 4.8,
     discount: 8,
     category: 'Elektronik',
     features: ['S Pen', '200MP Kamera', 'AI Özellikler'],
-    description: 'Galaxy AI ile donatılmış premium telefon'
+    description: 'Galaxy AI ile donatılmış premium telefon',
+    brand: 'Samsung',
+    inStock: true,
+    fastDelivery: true
   }
 ];
 
@@ -101,6 +120,63 @@ const categories = [
   { id: '3', name: 'Spor', icon: '⚽', count: 12, color: '#ec4899' },
   { id: '4', name: 'Ev & Yaşam', icon: '🏠', count: 15, color: '#f59e0b' }
 ];
+
+// Image Loader Component
+const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  const handleLoadStart = () => {
+    setIsLoading(true);
+    setHasError(false);
+  };
+
+  const handleLoadEnd = () => {
+    setIsLoading(false);
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
+  return (
+    <View style={style}>
+      {!hasError ? (
+        <>
+          <Image
+            source={{ uri: source }}
+            style={[style, { position: 'absolute' }]}
+            resizeMode={resizeMode}
+            onLoadStart={handleLoadStart}
+            onLoadEnd={handleLoadEnd}
+            onError={handleError}
+          />
+          {isLoading && (
+            <View style={[style, styles.imagePlaceholder]}>
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text style={styles.loadingText}>Resim Yükleniyor...</Text>
+            </View>
+          )}
+        </>
+      ) : (
+        <View style={[style, styles.imagePlaceholder]}>
+          <Text style={styles.placeholderText}>📷</Text>
+          <Text style={styles.placeholderSubtext}>Resim Yüklenemedi</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setHasError(false);
+              setIsLoading(true);
+            }}
+          >
+            <Text style={styles.retryText}>🔄 Tekrar Dene</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
 
 // Gelişmiş AI Asistanı
 class AdvancedAIAssistant {
@@ -113,17 +189,14 @@ class AdvancedAIAssistant {
     });
   }
 
-  // Akıllı ürün önerisi
   getPersonalizedRecommendations(userPreferences: string, budget?: number) {
     let filteredProducts = [...featuredProducts];
     const preferences = userPreferences.toLowerCase();
     
-    // Bütçe filtresi
     if (budget) {
       filteredProducts = filteredProducts.filter(p => p.price <= budget);
     }
     
-    // Tercih filtreleri
     if (preferences.includes('iphone') || preferences.includes('apple')) {
       filteredProducts = filteredProducts.filter(p => 
         p.name.toLowerCase().includes('iphone') || 
@@ -153,11 +226,9 @@ class AdvancedAIAssistant {
       filteredProducts = filteredProducts.filter(p => p.discount).sort((a, b) => b.discount - a.discount);
     }
 
-    // En iyi eşleşmeye göre sırala
     return filteredProducts.slice(0, 4);
   }
 
-  // Fiyat karşılaştırması
   comparePrices(product: any) {
     const similarProducts = featuredProducts.filter(p => 
       p.category === product.category && p.id !== product.id
@@ -178,7 +249,6 @@ class AdvancedAIAssistant {
     };
   }
 
-  // Ürün değerlendirmesi
   analyzeProduct(product: any) {
     const priceAnalysis = this.comparePrices(product);
     const rating = product.rating;
@@ -187,7 +257,6 @@ class AdvancedAIAssistant {
     let recommendation = '';
     let score = 0;
 
-    // Puanlama sistemi
     if (rating >= 4.5) {
       analysis += '🏆 **Yüksek puanlı ürün** - Kullanıcılar çok memnun\n\n';
       score += 30;
@@ -215,19 +284,16 @@ class AdvancedAIAssistant {
       score += 20;
     }
 
-    // Özellik değerlendirmesi
     if (product.features.length >= 3) {
       analysis += `🚀 **Zengin özellik seti** - ${product.features.slice(0, 3).join(', ')}\n\n`;
       score += 10;
     }
 
-    // Toplam skor
     analysis += `📊 **AI Değerlendirme Skoru:** ${score}/100`;
 
     return { analysis, recommendation, score };
   }
 
-  // Bütçe planlaması
   createBudgetPlan(budget: number, preferences: string) {
     const affordableProducts = this.getPersonalizedRecommendations(preferences, budget);
     
@@ -265,9 +331,7 @@ class AdvancedAIAssistant {
     };
   }
 
-  // Gelişmiş sohbet işleme
   async processMessage(message: string): Promise<{response: string, products?: any[], action?: string}> {
-    // Kullanıcı mesajını history'e ekle
     this.conversationHistory.push({ role: 'user', content: message });
     
     const lowerMessage = message.toLowerCase();
@@ -275,16 +339,13 @@ class AdvancedAIAssistant {
     let products: any[] = [];
     let action = '';
 
-    // Bütçe tespiti - HATA DÜZELTİLDİ: null kontrolü eklendi
     const budgetMatch = message.match(/(\d+)\s*(tl|try|₺|lira)/i);
     const budget = budgetMatch ? parseInt(budgetMatch[1]) : undefined;
 
-    // Komut analizi
     if (lowerMessage.includes('merhaba') || lowerMessage.includes('selam')) {
       response = 'Merhaba! 👋 SmartCommerce AI asistanına hoş geldiniz!\n\nSize nasıl yardımcı olabilirim?\n• "Bana telefon öner" - Kişiselleştirilmiş öneriler\n• "5000 TL bütçem var" - Bütçe planlaması\n• "En iyi indirimler" - Fırsat ürünleri\n• "iPhone 15 analiz" - Ürün değerlendirmesi';
     }
     else if (lowerMessage.includes('bütçe') || budget) {
-      // HATA DÜZELTİLDİ: budget undefined kontrolü
       const budgetPlan = this.createBudgetPlan(budget || 10000, message);
       response = budgetPlan.message;
       if (budgetPlan.products) {
@@ -293,7 +354,6 @@ class AdvancedAIAssistant {
       action = 'budget_plan';
     }
     else if (lowerMessage.includes('öner') || lowerMessage.includes('tavsiye') || lowerMessage.includes('ne al')) {
-      // HATA DÜZELTİLDİ: budget undefined kontrolü
       products = this.getPersonalizedRecommendations(message, budget);
       response = `🎁 **Size Özel Önerilerim:**\n\n`;
       
@@ -365,13 +425,11 @@ class AdvancedAIAssistant {
       action = 'search_results';
     }
 
-    // Asistan yanıtını history'e ekle
     this.conversationHistory.push({ role: 'assistant', content: response });
 
     return { response, products, action };
   }
 
-  // Akıllı arama
   smartSearch(query: string) {
     const results = {
       products: featuredProducts.filter(p => 
@@ -388,9 +446,8 @@ class AdvancedAIAssistant {
     return results;
   }
 
-  // Ürün adı çıkarımı
   private extractProductName(message: string): string {
-    const productKeywords = ['iphone', 'macbook', 'airpods', 'ipad', 'watch', 'samsung', 'galaxy'];
+    const productKeywords = ['iphone', 'macbook', 'airpods', 'ipad', 'watch', 'samsung', 'galaxy', 'nike'];
     
     for (const keyword of productKeywords) {
       if (message.toLowerCase().includes(keyword)) {
@@ -401,16 +458,13 @@ class AdvancedAIAssistant {
       }
     }
     
-    // Eşleşme yoksa ilk 3 kelimeyi döndür
     return message.split(' ').slice(0, 3).join(' ');
   }
 
-  // Sohbet geçmişini getir
   getConversationHistory() {
     return this.conversationHistory;
   }
 
-  // Sohbeti temizle
   clearConversation() {
     this.conversationHistory = [{
       role: 'assistant',
@@ -419,7 +473,6 @@ class AdvancedAIAssistant {
   }
 }
 
-// AI Asistanı instance'ı
 const aiAssistant = new AdvancedAIAssistant();
 
 const HomeScreen = ({ navigation }: any) => {
@@ -436,14 +489,12 @@ const HomeScreen = ({ navigation }: any) => {
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
-    // Modal açıldığında sohbet geçmişini yükle
     if (aiModalVisible) {
       setConversation(aiAssistant.getConversationHistory());
     }
   }, [aiModalVisible]);
 
   useEffect(() => {
-    // Yeni mesaj eklendiğinde en alta kaydır
     if (scrollViewRef.current) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -451,7 +502,6 @@ const HomeScreen = ({ navigation }: any) => {
     }
   }, [conversation]);
 
-  // HATA DÜZELTİLDİ: displayName null/undefined kontrolü
   const formatUserName = (name: string | null | undefined) => {
     if (!name) return 'Kullanıcı';
     return name.split(' ').map(word => 
@@ -478,7 +528,6 @@ const HomeScreen = ({ navigation }: any) => {
       setConversation(aiAssistant.getConversationHistory());
       setAiProducts(result.products || []);
       
-      // Animasyon
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
@@ -549,7 +598,6 @@ const HomeScreen = ({ navigation }: any) => {
           <View style={styles.userSection}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {/* HATA DÜZELTİLDİ: displayName null/undefined kontrolü */}
                 {user?.displayName?.charAt(0)?.toUpperCase() || '👤'}
               </Text>
             </View>
@@ -657,8 +705,8 @@ const HomeScreen = ({ navigation }: any) => {
                 onPress={() => handleProductPress(product)}
               >
                 <View style={styles.productImageContainer}>
-                  <Image 
-                    source={{ uri: product.image }} 
+                  <ProductImage 
+                    source={product.image}
                     style={styles.productImage}
                     resizeMode="cover"
                   />
@@ -670,9 +718,15 @@ const HomeScreen = ({ navigation }: any) => {
                   <View style={styles.ratingBadge}>
                     <Text style={styles.ratingText}>⭐ {product.rating}</Text>
                   </View>
+                  {product.fastDelivery && (
+                    <View style={styles.deliveryBadge}>
+                      <Text style={styles.deliveryBadgeText}>🚚 Hızlı</Text>
+                    </View>
+                  )}
                 </View>
                 
                 <View style={styles.productInfo}>
+                  <Text style={styles.productBrand}>{product.brand}</Text>
                   <Text style={styles.productName} numberOfLines={2}>
                     {product.name}
                   </Text>
@@ -689,6 +743,27 @@ const HomeScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             ))}
           </ScrollView>
+        </View>
+
+        {/* Categories */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>📂 Kategoriler</Text>
+            <TouchableOpacity>
+              <Text style={styles.sectionLink}>Tümü</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.categoriesContainer}>
+            {categories.map((category) => (
+              <TouchableOpacity key={category.id} style={styles.categoryCard}>
+                <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
+                  <Text style={styles.categoryIconText}>{category.icon}</Text>
+                </View>
+                <Text style={styles.categoryName}>{category.name}</Text>
+                <Text style={styles.categoryCount}>{category.count} ürün</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Bottom Spacer */}
@@ -753,12 +828,13 @@ const HomeScreen = ({ navigation }: any) => {
                       style={styles.recommendedProduct}
                       onPress={() => handleProductPress(product)}
                     >
-                      <Image 
-                        source={{ uri: product.image }} 
+                      <ProductImage 
+                        source={product.image}
                         style={styles.recommendedProductImage}
                         resizeMode="cover"
                       />
                       <View style={styles.recommendedProductInfo}>
+                        <Text style={styles.recommendedProductBrand}>{product.brand}</Text>
                         <Text style={styles.recommendedProductName} numberOfLines={2}>
                           {product.name}
                         </Text>
@@ -1091,6 +1167,39 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     backgroundColor: '#f8fafc',
   },
+  imagePlaceholder: {
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  loadingText: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  placeholderText: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  placeholderSubtext: {
+    fontSize: 10,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 8,
+  },
+  retryText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
   discountBadge: {
     position: 'absolute',
     top: 8,
@@ -1124,8 +1233,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1e293b',
   },
+  deliveryBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  deliveryBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
   productInfo: {
     padding: 12,
+  },
+  productBrand: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+    marginBottom: 2,
   },
   productName: {
     fontSize: 14,
@@ -1133,7 +1262,6 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 6,
     lineHeight: 18,
-    height: 36,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -1156,6 +1284,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     lineHeight: 14,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  categoryCard: {
+    width: '48%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  categoryIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryIconText: {
+    fontSize: 20,
+  },
+  categoryName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  categoryCount: {
+    fontSize: 12,
+    color: '#64748b',
   },
   bottomSpacer: {
     height: 30,
@@ -1289,6 +1451,12 @@ const styles = StyleSheet.create({
   recommendedProductInfo: {
     flex: 1,
     marginLeft: 12,
+  },
+  recommendedProductBrand: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+    marginBottom: 2,
   },
   recommendedProductName: {
     fontSize: 14,

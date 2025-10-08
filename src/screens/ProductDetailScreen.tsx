@@ -1,332 +1,441 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
-  Image, 
+  FlatList, 
   TouchableOpacity, 
-  Dimensions,
-  Animated,
-  Share,
+  Image, 
   Alert,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { addToCart } from '../store/cartSlice';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
+import { removeFromCart, updateQuantity, clearCart } from '../store/cartSlice';
 
-const { width } = Dimensions.get('window');
+// Image Loader Component
+const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [hasError, setHasError] = React.useState(false);
 
-const ProductDetailScreen = ({ route, navigation }: any) => {
-  const { product } = route.params;
+  const handleLoadStart = () => {
+    setIsLoading(true);
+    setHasError(false);
+  };
+
+  const handleLoadEnd = () => {
+    setIsLoading(false);
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
+  return (
+    <View style={style}>
+      {!hasError ? (
+        <>
+          <Image
+            source={{ uri: source }}
+            style={[style, { position: 'absolute' }]}
+            resizeMode={resizeMode}
+            onLoadStart={handleLoadStart}
+            onLoadEnd={handleLoadEnd}
+            onError={handleError}
+          />
+          {isLoading && (
+            <View style={[style, styles.imagePlaceholder]}>
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text style={styles.loadingText}>Resim Yükleniyor...</Text>
+            </View>
+          )}
+        </>
+      ) : (
+        <View style={[style, styles.imagePlaceholder]}>
+          <Text style={styles.placeholderText}>📷</Text>
+          <Text style={styles.placeholderSubtext}>Resim Yüklenemedi</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setHasError(false);
+              setIsLoading(true);
+            }}
+          >
+            <Text style={styles.retryText}>🔄 Tekrar Dene</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
+// AI Sepet Analizi Fonksiyonu
+const analyzeCart = (items: any[]) => {
+  if (items.length === 0) {
+    return {
+      message: '🛒 Sepetiniz boş',
+      suggestion: 'Hemen alışverişe başlayın!',
+      color: '#64748b'
+    };
+  }
+
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalValue = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const totalSavings = items.reduce((sum, item) => {
+    if (item.product.originalPrice) {
+      return sum + ((item.product.originalPrice - item.product.price) * item.quantity);
+    }
+    return sum;
+  }, 0);
+
+  let message = '';
+  let suggestion = '';
+  let color = '#6366f1';
+
+  if (totalValue > 10000) {
+    message = '💰 Premium Alışveriş!';
+    suggestion = 'Yüksek bütçeli bir sepetiniz var.';
+    color = '#8b5cf6';
+  } else if (totalValue > 5000) {
+    message = '⭐ Kaliteli Sepet!';
+    suggestion = 'Orta bütçeli kaliteli ürünler.';
+    color = '#10b981';
+  } else {
+    message = '🎯 Akıllı Alışveriş!';
+    suggestion = 'Bütçe dostu harika seçimler.';
+    color = '#6366f1';
+  }
+
+  if (totalSavings > 1000) {
+    suggestion += ` 🎉 ${totalSavings.toLocaleString('tr-TR')} TL tasarruf!`;
+  }
+
+  return {
+    message,
+    suggestion,
+    color,
+    totalItems,
+    totalValue,
+    totalSavings
+  };
+};
+
+const CartScreen = ({ navigation }: any) => {
   const dispatch = useDispatch();
   const cart = useSelector((state: RootState) => state.cart);
   
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const items = cart?.items || [];
+  const total = cart?.total || 0;
+  const itemCount = cart?.itemCount || 0;
 
-  const productImages = [
-    product.image,
-    'https://picsum.photos/300/300?random=10',
-    'https://picsum.photos/300/300?random=11',
-    'https://picsum.photos/300/300?random=12'
-  ];
+  const cartAnalysis = analyzeCart(items);
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  const handleQuantityChange = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      handleRemoveItem(productId);
+    } else {
+      dispatch(updateQuantity({ productId, quantity: newQuantity }));
+    }
+  };
 
-  // DÜZELTİLDİ: Artık doğru parametre yapısını kullanıyor
-  const handleAddToCart = () => {
-    dispatch(addToCart({
-      product: product,
-      quantity: quantity
-    }));
-    
+  const handleRemoveItem = (productId: string) => {
     Alert.alert(
-      'Başarılı! 🛒',
-      `${product.name} (${quantity} adet) sepete eklendi!`,
+      'Ürünü Sil',
+      'Bu ürünü sepetinizden çıkarmak istediğinizden emin misiniz?',
       [
-        {
-          text: 'Alışverişe Devam Et',
-          style: 'cancel'
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Evet, Sil', 
+          style: 'destructive',
+          onPress: () => dispatch(removeFromCart(productId))
         },
-        {
-          text: 'Sepete Git',
-          onPress: () => navigation.navigate('Cart')
-        }
       ]
     );
   };
 
-  // DÜZELTİLDİ: Artık doğru parametre yapısını kullanıyor
-  const handleBuyNow = () => {
-    dispatch(addToCart({
-      product: product,
-      quantity: quantity
-    }));
-    navigation.navigate('Cart');
+  const handleClearCart = () => {
+    if (items.length === 0) return;
+    
+    Alert.alert(
+      'Sepeti Temizle',
+      'Tüm ürünleri sepetinizden çıkarmak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Evet, Temizle', 
+          style: 'destructive',
+          onPress: () => dispatch(clearCart())
+        },
+      ]
+    );
   };
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `${product.name} - Sadece ₺${product.price.toLocaleString()}! ${product.description}`,
-        url: product.image,
-        title: product.name
-      });
-    } catch (error) {
-      Alert.alert('Paylaşım hatası', 'Ürün paylaşılırken bir hata oluştu.');
-    }
+  const handleCheckout = () => {
+    if (items.length === 0) return;
+    
+    Alert.alert(
+      '🤖 SmartCommerce AI Önerisi',
+      `Toplam ${itemCount} ürün için ${total.toLocaleString('tr-TR')} TL ödeme yapacaksınız.\n\nAI Asistanı: Bu harika bir alışveriş! 🎉`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Ödemeye Geç', 
+          onPress: () => {
+            Alert.alert(
+              '✅ Ödeme Başarılı!',
+              `Siparişiniz alındı! ${total.toLocaleString('tr-TR')} TL tutarındaki alışverişiniz için teşekkür ederiz.`,
+              [
+                {
+                  text: 'Tamam',
+                  onPress: () => {
+                    dispatch(clearCart());
+                    navigation.navigate('MainTabs', { screen: 'Home' });
+                  }
+                }
+              ]
+            );
+          }
+        },
+      ]
+    );
   };
 
-  const handleQuantityChange = (change: number) => {
-    const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= 10) {
-      setQuantity(newQuantity);
-    }
+  const handleContinueShopping = () => {
+    navigation.navigate('MainTabs', { screen: 'Products' });
   };
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
+  const handleAIAssistant = () => {
+    Alert.alert(
+      '🤖 Sepet Analizi',
+      `AI Asistanı raporu:\n\n• ${itemCount} ürün\n• ${total.toLocaleString('tr-TR')} TL toplam\n• ${cartAnalysis.totalSavings.toLocaleString('tr-TR')} TL tasarruf\n\n${cartAnalysis.suggestion}`,
+      [{ text: 'Harika!', style: 'default' }]
+    );
   };
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
+  const renderCartItem = ({ item }: any) => (
+    <View style={styles.cartItem}>
+      <ProductImage 
+        source={item.product.image} 
+        style={styles.productImage}
+        resizeMode="cover"
+      />
+      
+      <View style={styles.productInfo}>
+        <View style={styles.productHeader}>
+          <View style={styles.productTitleContainer}>
+            <Text style={styles.productBrand}>{item.product.brand || 'Marka'}</Text>
+            <Text style={styles.productName} numberOfLines={2}>
+              {item.product.name}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.removeButton}
+            onPress={() => handleRemoveItem(item.product.id)}
+          >
+            <Text style={styles.removeButtonText}>🗑️</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.productCategory}>#{item.product.category}</Text>
+        
+        <View style={styles.priceRow}>
+          <Text style={styles.productPrice}>₺{(item.product.price * item.quantity).toLocaleString('tr-TR')}</Text>
+          {item.product.originalPrice && (
+            <Text style={styles.originalPrice}>
+              ₺{(item.product.originalPrice * item.quantity).toLocaleString('tr-TR')}
+            </Text>
+          )}
+          {item.product.discount && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountBadgeText}>%{item.product.discount}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.quantityContainer}>
+          <TouchableOpacity 
+            style={[styles.quantityButton, item.quantity === 1 && styles.quantityButtonDisabled]}
+            onPress={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+            disabled={item.quantity === 1}
+          >
+            <Text style={[styles.quantityButtonText, item.quantity === 1 && styles.quantityButtonTextDisabled]}>
+              −
+            </Text>
+          </TouchableOpacity>
+          
+          <View style={styles.quantityDisplay}>
+            <Text style={styles.quantity}>{item.quantity}</Text>
+            <Text style={styles.quantityUnit}>adet</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.quantityButton}
+            onPress={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+          >
+            <Text style={styles.quantityButtonText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
+
+  if (items.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar backgroundColor="#6366f1" barStyle="light-content" />
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIcon}>
+            <Text style={styles.emptyIconText}>🛒</Text>
+          </View>
+          
+          <Text style={styles.emptyTitle}>Sepetiniz Boş</Text>
+          <Text style={styles.emptyText}>
+            Henüz sepetinize ürün eklemediniz.{'\n'}
+            Hemen alışverişe başlayın!
+          </Text>
+
+          {/* AI Öneri Butonu */}
+          <TouchableOpacity 
+            style={styles.aiSuggestionButton}
+            onPress={handleAIAssistant}
+          >
+            <Text style={styles.aiSuggestionIcon}>🤖</Text>
+            <View style={styles.aiSuggestionText}>
+              <Text style={styles.aiSuggestionTitle}>AI Asistanı Önerisi</Text>
+              <Text style={styles.aiSuggestionSubtitle}>Size özel ürünler için tıklayın</Text>
+            </View>
+            <Text style={styles.aiSuggestionArrow}>›</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.shopButton}
+            onPress={handleContinueShopping}
+          >
+            <Text style={styles.shopButtonText}>🛍️ Alışverişe Başla</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#6366f1" barStyle="light-content" />
       
-      {/* Animated Header */}
-      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        <View style={styles.headerBackground} />
-        <View style={styles.headerContent}>
+      {/* Compact & Rich Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {product.name}
-          </Text>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <Text style={styles.shareButtonText}>📤</Text>
+          
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>🛒 Sepetim</Text>
+            <Text style={styles.headerSubtitle}>{itemCount} ürün</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.clearButton}
+            onPress={handleClearCart}
+          >
+            <Text style={styles.clearButtonText}>🗑️</Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        {/* Image Gallery */}
-        <View style={styles.imageSection}>
-          <Image 
-            source={{ uri: productImages[selectedImage] }} 
-            style={styles.mainImage} 
-          />
+        
+        {/* AI Sepet Analizi */}
+        <TouchableOpacity 
+          style={[styles.aiAnalysisCard, { backgroundColor: cartAnalysis.color }]}
+          onPress={handleAIAssistant}
+        >
+          <View style={styles.aiAnalysisContent}>
+            <Text style={styles.aiAnalysisIcon}>🤖</Text>
+            <View style={styles.aiAnalysisText}>
+              <Text style={styles.aiAnalysisTitle}>{cartAnalysis.message}</Text>
+              <Text style={styles.aiAnalysisSubtitle}>{cartAnalysis.suggestion}</Text>
+            </View>
+            <Text style={styles.aiAnalysisArrow}>›</Text>
+          </View>
+        </TouchableOpacity>
+        
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Toplam</Text>
+            <Text style={styles.statValue}>₺{total.toLocaleString('tr-TR')}</Text>
+          </View>
           
-          {/* Image Indicators */}
-          <View style={styles.imageIndicatorsContainer}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.imageIndicators}
-              contentContainerStyle={styles.imageIndicatorsContent}
-            >
-              {productImages.map((image, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.imageIndicator,
-                    selectedImage === index && styles.imageIndicatorActive
-                  ]}
-                  onPress={() => setSelectedImage(index)}
-                >
-                  <Image 
-                    source={{ uri: image }} 
-                    style={styles.thumbnailImage} 
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-
-        {/* Product Info */}
-        <View style={styles.content}>
-          {/* Badges */}
-          <View style={styles.badgesContainer}>
-            <View style={styles.badgesRow}>
-              {product.discount && (
-                <View style={styles.discountBadge}>
-                  <Text style={styles.discountBadgeText}>%{product.discount} İndirim</Text>
-                </View>
-              )}
-              <View style={styles.stockBadge}>
-                <Text style={styles.stockBadgeText}>
-                  {product.inStock !== false ? '✅ Stokta' : '❌ Tükendi'}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
-              <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteActive]}>
-                {isFavorite ? '❤️' : '🤍'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Product Title */}
-          <View style={styles.titleSection}>
-            <Text style={styles.productName}>{product.name}</Text>
-            <Text style={styles.productCategory}>#{product.category}</Text>
-          </View>
-
-          {/* Price Section */}
-          <View style={styles.priceSection}>
-            <View style={styles.priceMain}>
-              <Text style={styles.currentPrice}>₺{product.price.toLocaleString('tr-TR')}</Text>
-              {product.originalPrice && (
-                <View style={styles.originalPriceContainer}>
-                  <Text style={styles.originalPrice}>₺{product.originalPrice.toLocaleString('tr-TR')}</Text>
-                  {product.discount && (
-                    <Text style={styles.discountPercent}>%{product.discount}</Text>
-                  )}
-                </View>
-              )}
-            </View>
-            {product.discount && product.originalPrice && (
-              <View style={styles.savingsContainer}>
-                <Text style={styles.savingsText}>
-                  ₺{(product.originalPrice - product.price).toLocaleString('tr-TR')} tasarruf
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Rating */}
-          <View style={styles.ratingSection}>
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingIcon}>⭐</Text>
-              <Text style={styles.ratingValue}>{product.rating || '4.5'}</Text>
-              <Text style={styles.reviews}>({product.reviewCount || '124'} değerlendirme)</Text>
-            </View>
-          </View>
-
-          {/* Quantity Selector - ŞİMDİ ÇALIŞACAK! */}
-          <View style={styles.quantitySection}>
-            <Text style={styles.quantityLabel}>Adet:</Text>
-            <View style={styles.quantitySelector}>
-              <TouchableOpacity 
-                style={[styles.quantityButton, quantity <= 1 && styles.quantityButtonDisabled]}
-                onPress={() => handleQuantityChange(-1)}
-                disabled={quantity <= 1}
-              >
-                <Text style={[styles.quantityButtonText, quantity <= 1 && styles.quantityButtonTextDisabled]}>−</Text>
-              </TouchableOpacity>
-              <View style={styles.quantityDisplay}>
-                <Text style={styles.quantityValue}>{quantity}</Text>
-              </View>
-              <TouchableOpacity 
-                style={[styles.quantityButton, quantity >= 10 && styles.quantityButtonDisabled]}
-                onPress={() => handleQuantityChange(1)}
-                disabled={quantity >= 10}
-              >
-                <Text style={[styles.quantityButtonText, quantity >= 10 && styles.quantityButtonTextDisabled]}>+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Quick Features */}
-          <View style={styles.featuresSection}>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🚚</Text>
-              <Text style={styles.featureText}>Ücretsiz Kargo</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>↩️</Text>
-              <Text style={styles.featureText}>30 Gün İade</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🛡️</Text>
-              <Text style={styles.featureText}>2 Yıl Garanti</Text>
-            </View>
-          </View>
-
-          {/* Description */}
-          <View style={styles.descriptionSection}>
-            <Text style={styles.sectionTitle}>Ürün Açıklaması</Text>
-            <Text style={styles.description}>
-              {product.description || 'Bu ürün yüksek kalite standartlarında üretilmiştir. Müşteri memnuniyeti garantilidir.'}
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Tasarruf</Text>
+            <Text style={[styles.statValue, styles.savingsValue]}>
+              {cartAnalysis.totalSavings > 0 ? `₺${cartAnalysis.totalSavings.toLocaleString('tr-TR')}` : 'Yok'}
             </Text>
           </View>
-
-          {/* AI Recommendation */}
-          <View style={styles.aiSection}>
-            <View style={styles.aiHeader}>
-              <Text style={styles.aiIcon}>🤖</Text>
-              <View>
-                <Text style={styles.aiTitle}>SmartCommerce AI Önerisi</Text>
-                <Text style={styles.aiSubtitle}>Akıllı alışveriş asistanı</Text>
-              </View>
-            </View>
-            <Text style={styles.aiText}>
-              {product.rating >= 4.5 ? '🏆 ' : '⭐ '}
-              {product.rating >= 4.5 
-                ? 'Mükemmel puanlı ürün! Kullanıcıların %95\'i memnun.'
-                : 'Kaliteli ürün! Güvenle alabilirsiniz.'
-              }
-            </Text>
+          
+          <View style={styles.statDivider} />
+          
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Kargo</Text>
+            <Text style={[styles.statValue, styles.shippingValue]}>Ücretsiz</Text>
           </View>
-
-          {/* Bottom Spacer */}
-          <View style={styles.bottomSpacer} />
         </View>
-      </ScrollView>
+      </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionBar}>
-        <View style={styles.priceSummary}>
-          <Text style={styles.totalLabel}>Toplam:</Text>
-          <Text style={styles.totalPrice}>₺{(product.price * quantity).toLocaleString('tr-TR')}</Text>
+      {/* Products List */}
+      <FlatList
+        data={items}
+        renderItem={renderCartItem}
+        keyExtractor={(item) => item.product.id}
+        style={styles.list}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ListFooterComponent={
+          <View style={styles.footerSpacer} />
+        }
+      />
+
+      {/* Fixed Footer */}
+      <View style={styles.footer}>
+        <View style={styles.footerSummary}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Ara Toplam:</Text>
+            <Text style={styles.summaryValue}>₺{total.toLocaleString('tr-TR')}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Kargo:</Text>
+            <Text style={[styles.summaryValue, styles.freeShipping]}>ÜCRETSİZ</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>GENEL TOPLAM:</Text>
+            <Text style={styles.totalValue}>₺{total.toLocaleString('tr-TR')}</Text>
+          </View>
         </View>
+        
         <View style={styles.actionButtons}>
           <TouchableOpacity 
-            style={[
-              styles.addToCartButton,
-              product.inStock === false && styles.disabledButton
-            ]} 
-            onPress={handleAddToCart}
-            disabled={product.inStock === false}
+            style={styles.continueButton}
+            onPress={handleContinueShopping}
           >
-            <Text style={styles.addToCartText}>
-              {product.inStock !== false ? 'Sepete Ekle' : 'Stokta Yok'}
-            </Text>
+            <Text style={styles.continueButtonText}>📦 Alışverişe Devam</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[
-              styles.buyNowButton,
-              product.inStock === false && styles.disabledButton
-            ]} 
-            onPress={handleBuyNow}
-            disabled={product.inStock === false}
+            style={styles.checkoutButton}
+            onPress={handleCheckout}
           >
-            <Text style={styles.buyNowText}>
-              {product.inStock !== false ? 'Hemen Al' : 'Stokta Yok'}
-            </Text>
+            <View style={styles.checkoutContent}>
+              <Text style={styles.checkoutButtonText}>💳 Ödemeye Geç</Text>
+              <View style={styles.checkoutBadge}>
+                <Text style={styles.checkoutBadgeText}>₺{total.toLocaleString('tr-TR')}</Text>
+              </View>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -334,266 +443,292 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   );
 };
 
-// Styles aynı kalıyor...
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f8fafc',
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    paddingTop: 50,
-    paddingBottom: 12,
-  },
-  headerBackground: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#6366f1',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 50,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 32,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backButtonText: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  headerCenter: {
+    alignItems: 'center',
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginHorizontal: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
   },
-  shareButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  clearButton: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  shareButtonText: {
+  clearButtonText: {
+    color: '#fff',
     fontSize: 14,
-    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  scrollView: {
-    flex: 1,
-  },
-  imageSection: {
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 16,
-  },
-  mainImage: {
-    width: '100%',
-    height: 380,
-    resizeMode: 'cover',
-  },
-  imageIndicatorsContainer: {
-    marginTop: 12,
-  },
-  imageIndicators: {
-    marginHorizontal: -16,
-  },
-  imageIndicatorsContent: {
-    paddingHorizontal: 16,
-  },
-  imageIndicator: {
-    width: 60,
-    height: 60,
+  aiAnalysisCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 12,
-    marginRight: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    overflow: 'hidden',
+    padding: 12,
+    marginBottom: 12,
   },
-  imageIndicatorActive: {
-    borderColor: '#6366f1',
-  },
-  thumbnailImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  content: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -20,
-  },
-  badgesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    flex: 1,
-  },
-  discountBadge: {
-    backgroundColor: '#fef3c7',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  discountBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#92400e',
-  },
-  stockBadge: {
-    backgroundColor: '#dcfce7',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  stockBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#166534',
-  },
-  favoriteButton: {
-    padding: 8,
-  },
-  favoriteIcon: {
-    fontSize: 24,
-  },
-  favoriteActive: {
-    color: '#ef4444',
-  },
-  titleSection: {
-    marginBottom: 16,
-  },
-  productName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 4,
-    lineHeight: 32,
-  },
-  productCategory: {
-    fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  priceSection: {
-    marginBottom: 16,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 16,
-  },
-  priceMain: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 8,
-  },
-  currentPrice: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#6366f1',
-    marginRight: 12,
-  },
-  originalPriceContainer: {
+  aiAnalysisContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  originalPrice: {
-    fontSize: 16,
-    color: '#64748b',
-    textDecorationLine: 'line-through',
-    marginRight: 6,
+  aiAnalysisIcon: {
+    fontSize: 20,
+    marginRight: 12,
   },
-  discountPercent: {
+  aiAnalysisText: {
+    flex: 1,
+  },
+  aiAnalysisTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  aiAnalysisSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#ef4444',
-    backgroundColor: '#fef2f2',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    color: 'rgba(255,255,255,0.9)',
   },
-  savingsContainer: {
-    backgroundColor: '#f0fdf4',
+  aiAnalysisArrow: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  savingsValue: {
+    color: '#10b981',
+  },
+  shippingValue: {
+    color: '#10b981',
+  },
+  statDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    padding: 12,
+  },
+  footerSpacer: {
+    height: 160,
+  },
+  cartItem: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  productImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+  },
+  imagePlaceholder: {
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  loadingText: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  placeholderText: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  placeholderSubtext: {
+    fontSize: 8,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#6366f1',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    alignSelf: 'flex-start',
   },
-  savingsText: {
+  retryText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  productInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  productHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  productTitleContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  productBrand: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    lineHeight: 18,
+  },
+  removeButton: {
+    width: 24,
+    height: 24,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#166534',
+    color: '#dc2626',
   },
-  ratingSection: {
-    marginBottom: 20,
+  productCategory: {
+    fontSize: 11,
+    color: '#6366f1',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
-  ratingContainer: {
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  ratingIcon: {
+  productPrice: {
     fontSize: 16,
-    marginRight: 6,
+    fontWeight: '700',
+    color: '#6366f1',
+    marginRight: 8,
   },
-  ratingValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginRight: 6,
-  },
-  reviews: {
-    fontSize: 14,
+  originalPrice: {
+    fontSize: 12,
     color: '#64748b',
+    textDecorationLine: 'line-through',
+    marginRight: 8,
   },
-  quantitySection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+  discountBadge: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  quantityLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+  discountBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#92400e',
   },
-  quantitySelector: {
+  quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 4,
+    alignSelf: 'flex-start',
   },
   quantityButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
     backgroundColor: '#6366f1',
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -601,7 +736,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e2e8f0',
   },
   quantityButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#ffffff',
   },
@@ -611,146 +746,218 @@ const styles = StyleSheet.create({
   quantityDisplay: {
     minWidth: 40,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  quantityValue: {
-    fontSize: 16,
+  quantity: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#1e293b',
   },
-  featuresSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  featureItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  featureIcon: {
-    fontSize: 20,
-    marginBottom: 6,
-  },
-  featureText: {
-    fontSize: 12,
-    color: '#475569',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  descriptionSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#475569',
-  },
-  aiSection: {
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.1)',
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  aiIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  aiTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  aiSubtitle: {
-    fontSize: 12,
+  quantityUnit: {
+    fontSize: 9,
     color: '#64748b',
+    marginTop: 1,
   },
-  aiText: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-  },
-  bottomSpacer: {
-    height: 100,
-  },
-  actionBar: {
+  footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 20,
+    backgroundColor: '#fff',
+    padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowRadius: 8,
     elevation: 8,
   },
-  priceSummary: {
+  footerSummary: {
+    marginBottom: 12,
+  },
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  totalLabel: {
-    fontSize: 16,
+  summaryLabel: {
+    fontSize: 13,
     color: '#64748b',
+    fontWeight: '500',
+  },
+  summaryValue: {
+    fontSize: 13,
+    color: '#1e293b',
     fontWeight: '600',
   },
-  totalPrice: {
-    fontSize: 20,
+  freeShipping: {
+    color: '#10b981',
+    fontWeight: '700',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: '#1e293b',
+    fontWeight: '700',
+  },
+  totalValue: {
+    fontSize: 18,
     fontWeight: '800',
     color: '#6366f1',
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
-  addToCartButton: {
+  continueButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#6366f1',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  checkoutButton: {
     flex: 2,
     backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  addToCartText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  buyNowButton: {
+  checkoutContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    backgroundColor: '#10b981',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  buyNowText: {
-    fontSize: 16,
+  checkoutButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
-  disabledButton: {
-    backgroundColor: '#94a3b8',
+  checkoutBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  checkoutBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#f8fafc',
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#e0e7ff',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyIconText: {
+    fontSize: 32,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  aiSuggestionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+  },
+  aiSuggestionIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  aiSuggestionText: {
+    flex: 1,
+  },
+  aiSuggestionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6366f1',
+    marginBottom: 2,
+  },
+  aiSuggestionSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  aiSuggestionArrow: {
+    fontSize: 16,
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  shopButton: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  shopButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 
-export default ProductDetailScreen;
+export default CartScreen;
