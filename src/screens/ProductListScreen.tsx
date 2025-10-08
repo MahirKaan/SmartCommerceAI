@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -14,26 +14,37 @@ import {
   StatusBar,
   ActivityIndicator
 } from 'react-native';
+import { mockProducts } from '../data/mockData'; // ✅ MOCK DATAYI IMPORT ET
 
 const { width } = Dimensions.get('window');
 
-// Image Loader Component
+// Image Loader Component - LOCAL ve ONLINE RESİMLER İÇİN GÜNCELLENDİ
 const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasError, setHasError] = React.useState(false);
 
+  // ✅ LOCAL RESİM MI ONLINE RESİM MI KONTROLÜ
+  const isLocalImage = typeof source === 'number' || (source && source.uri === undefined);
+  const imageSource = isLocalImage ? source : { uri: String(source) }; // ✅ STRING'E ÇEVİRME EKLENDİ
+
   const handleLoadStart = () => {
-    setIsLoading(true);
-    setHasError(false);
+    if (!isLocalImage) {
+      setIsLoading(true);
+      setHasError(false);
+    }
   };
 
   const handleLoadEnd = () => {
-    setIsLoading(false);
+    if (!isLocalImage) {
+      setIsLoading(false);
+    }
   };
 
   const handleError = () => {
-    setIsLoading(false);
-    setHasError(true);
+    if (!isLocalImage) {
+      setIsLoading(false);
+      setHasError(true);
+    }
   };
 
   return (
@@ -41,14 +52,14 @@ const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
       {!hasError ? (
         <>
           <Image
-            source={{ uri: source }}
+            source={imageSource}
             style={[style, { position: 'absolute' }]}
             resizeMode={resizeMode}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             onError={handleError}
           />
-          {isLoading && (
+          {!isLocalImage && isLoading && (
             <View style={[style, styles.imagePlaceholder]}>
               <ActivityIndicator size="small" color="#6366f1" />
               <Text style={styles.loadingText}>Resim Yükleniyor...</Text>
@@ -74,225 +85,16 @@ const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
   );
 };
 
-// GERÇEK ÜRÜN VERİLERİ - ÇALIŞAN RESİMLERLE
-const tempProducts = [
-  {
-    id: '1',
-    name: 'iPhone 15 Pro Max',
-    price: 55999,
-    originalPrice: 59999,
-    category: 'Elektronik',
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=webp&qlt=70&.v=1692846359318',
-    description: 'En yeni iPhone modeli, Titanium kasa, A17 Pro çip, 48MP kamera',
-    rating: 4.9,
-    reviewCount: 342,
-    inStock: true,
-    features: ['5G', 'Face ID', '120Hz', 'USB-C'],
-    tags: ['apple', 'iphone', 'premium'],
-    discount: 7,
-    brand: 'Apple',
-    fastDelivery: true
-  },
-  {
-    id: '2',
-    name: 'Samsung Galaxy S24 Ultra',
-    price: 42999,
-    originalPrice: 45999,
-    category: 'Elektronik',
-    image: 'https://images.samsung.com/is/image/samsung/assets/tr/2401/pcd/gallery/S24-Ultra-Bronze-1.jpg',
-    description: 'S Pen desteği, 200MP kamera, Snapdragon 8 Gen 3',
-    rating: 4.7,
-    reviewCount: 287,
-    inStock: true,
-    features: ['S Pen', '200MP Kamera', '5G', '120Hz'],
-    tags: ['samsung', 'android', 'spen'],
-    discount: 6,
-    brand: 'Samsung',
-    fastDelivery: true
-  },
-  {
-    id: '3',
-    name: 'MacBook Air M3',
-    price: 35999,
-    originalPrice: 39999,
-    category: 'Elektronik',
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/macbook-air-midnight-select-202402?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1708367059432',
-    description: 'M3 çip, 13.6 inç Liquid Retina, 18 saat pil ömrü',
-    rating: 4.8,
-    reviewCount: 156,
-    inStock: true,
-    features: ['M3 Çip', '18 Saat Pil', 'Retina Ekran', 'MacOS'],
-    tags: ['apple', 'macbook', 'laptop'],
-    discount: 10,
-    brand: 'Apple',
-    fastDelivery: false,
-    isNew: true
-  },
-  {
-    id: '4',
-    name: 'AirPods Pro (2.Nesil)',
-    price: 7999,
-    originalPrice: 8999,
-    category: 'Elektronik',
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/MTJV3?wid=1144&hei=1144&fmt=jpeg&qlt=90&.v=1694014871985',
-    description: 'Gelişmiş aktif gürültü engelleme özellikli kulaklık',
-    rating: 4.7,
-    reviewCount: 421,
-    inStock: true,
-    features: ['Gürültü Önleme', '24 Saat Pil', 'USB-C'],
-    tags: ['apple', 'airpods', 'kulaklık'],
-    discount: 11,
-    brand: 'Apple',
-    fastDelivery: true
-  },
-  {
-    id: '5',
-    name: 'Nike Air Force 1',
-    price: 1299,
-    originalPrice: 1499,
-    category: 'Giyim',
-    image: 'https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/b7d9211c-26e7-431a-ac24-b0540fb3c00f/air-force-1-07-ayakkab%C4%B1s%C4%B1-1d3386.png',
-    description: 'Klasik beyaz spor ayakkabı, deri malzeme',
-    rating: 4.5,
-    reviewCount: 892,
-    inStock: true,
-    features: ['Deri Malzeme', 'Air Teknolojisi', 'Beyaz Renk'],
-    tags: ['nike', 'spor', 'ayakkabı'],
-    discount: 13,
-    brand: 'Nike',
-    fastDelivery: true,
-    isBestSeller: true
-  },
-  {
-    id: '6',
-    name: 'iPad Air M2',
-    price: 27999,
-    originalPrice: 29999,
-    category: 'Elektronik',
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/ipad-air-finish-select-202405?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1713202736948',
-    description: 'M2 çipli yeni nesil iPad',
-    rating: 4.6,
-    reviewCount: 234,
-    inStock: true,
-    features: ['M2 Çip', 'Liquid Retina', 'Apple Pencil'],
-    tags: ['apple', 'ipad', 'tablet'],
-    discount: 7,
-    brand: 'Apple',
-    fastDelivery: false
-  },
-  {
-    id: '7',
-    name: 'Samsung Galaxy Buds2 Pro',
-    price: 5999,
-    originalPrice: 6999,
-    category: 'Elektronik',
-    image: 'https://images.samsung.com/is/image/samsung/assets/tr/galaxy-buds2-pro/images/galaxy-buds2-pro_highlights_kv.jpg',
-    description: 'Profesyonel ses kalitesi',
-    rating: 4.4,
-    reviewCount: 189,
-    inStock: true,
-    features: ['360 Audio', 'Gürültü Önleme', '24bit Hi-Fi'],
-    tags: ['samsung', 'kulaklık', 'wireless'],
-    discount: 14,
-    brand: 'Samsung',
-    fastDelivery: false
-  },
-  {
-    id: '8',
-    name: 'Apple Watch Series 9',
-    price: 14999,
-    originalPrice: 15999,
-    category: 'Elektronik',
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/MT6W3ref_VW_34FR+watch-49-titanium-ultra2_VW_34FR_WF_CO+watch-face-49-aluminum-ultra2_VW_34FR_WF_CO?wid=1400&hei=1400&fmt=p-jpg&qlt=90&.v=1720770862352',
-    description: 'Akıllı saatin en gelişmiş modeli',
-    rating: 4.5,
-    reviewCount: 312,
-    inStock: true,
-    features: ['GPS', 'Kardiyo Takip', 'Su Geçirmez'],
-    tags: ['apple', 'watch', 'akıllı saat'],
-    discount: 6,
-    brand: 'Apple',
-    fastDelivery: true,
-    isPopular: true
-  },
-  {
-    id: '9',
-    name: 'PlayStation 5',
-    price: 14999,
-    category: 'Elektronik',
-    image: 'https://gmedia.playstation.com/is/image/SIEPDC/ps5-product-thumbnail-01-en-14sep21?$1600px--t$',
-    description: '4K gaming, SSD, DualSense kontrolcü',
-    rating: 4.9,
-    reviewCount: 567,
-    inStock: true,
-    features: ['4K Gaming', 'SSD', 'DualSense', '8K Çıkış'],
-    tags: ['sony', 'playstation', 'oyun'],
-    brand: 'Sony',
-    fastDelivery: true,
-    isPopular: true
-  },
-  {
-    id: '10',
-    name: 'Sony WH-1000XM5',
-    price: 8999,
-    originalPrice: 10999,
-    category: 'Elektronik',
-    image: 'https://www.sony.com.tr/image/5c8dfb6c9e51d8a0d4d5e5c8a5e5c8a4?fmt=pjpeg&wid=1200&hei=1200',
-    description: 'Gürültü önleyici kulaklık, 30 saat pil, dokunmatik kontrol',
-    rating: 4.6,
-    reviewCount: 421,
-    inStock: true,
-    features: ['Gürültü Önleme', '30 Saat Pil', 'Dokunmatik', 'Bluetooth 5.2'],
-    tags: ['sony', 'kulaklık', 'wireless'],
-    discount: 18,
-    brand: 'Sony',
-    fastDelivery: true
-  },
-  {
-    id: '11',
-    name: 'Adidas Ultraboost',
-    price: 1899,
-    originalPrice: 2199,
-    category: 'Giyim',
-    image: 'https://assets.adidas.com/images/h_840,f_auto,q_auto,fl_lossy,c_fill,g_auto/abc123def456ghi789jkl/ultraboost-22-shoes.jpg',
-    description: 'Koşu ayakkabısı, Boost teknolojisi, rahat taban',
-    rating: 4.4,
-    reviewCount: 324,
-    inStock: true,
-    features: ['Boost Teknolojisi', 'Primeknit', 'Koşu'],
-    tags: ['adidas', 'spor', 'ayakkabı'],
-    discount: 14,
-    brand: 'Adidas',
-    fastDelivery: true
-  },
-  {
-    id: '12',
-    name: 'Dell XPS 13',
-    price: 28999,
-    originalPrice: 31999,
-    category: 'Elektronik',
-    image: 'https://i.dell.com/is/image/DellContent/content/dam/ss2/products/notebooks/xps-notebooks/xps-13-9315/media-gallery/notebook-xps-13-9315-nt-blue-gallery-1.psd?fmt=pjpg&pscan=auto&scl=1&wid=3334&hei=2417&qlt=100,0&resMode=sharp2&size=3334,2417',
-    description: 'İnce ve hafif dizüstü bilgisayar, 13 inç ekran',
-    rating: 4.5,
-    reviewCount: 198,
-    inStock: true,
-    features: ['Intel i7', '16GB RAM', '512GB SSD', 'Windows 11'],
-    tags: ['dell', 'laptop', 'windows'],
-    discount: 9,
-    brand: 'Dell',
-    fastDelivery: false
-  }
-];
-
+// ✅ MOCK DATAYI KULLAN, TEMP PRODUCTS'İ SİL
 const categories = [
-  { id: 'all', name: 'Tümü', count: tempProducts.length, icon: '📦' },
-  { id: 'elektronik', name: 'Elektronik', count: tempProducts.filter(p => p.category === 'Elektronik').length, icon: '📱' },
-  { id: 'giyim', name: 'Giyim', count: tempProducts.filter(p => p.category === 'Giyim').length, icon: '👕' },
-  { id: 'apple', name: 'Apple', count: tempProducts.filter(p => p.brand === 'Apple').length, icon: '🍎' },
-  { id: 'samsung', name: 'Samsung', count: tempProducts.filter(p => p.brand === 'Samsung').length, icon: '📱' },
-  { id: 'indirim', name: 'İndirim', count: tempProducts.filter(p => p.discount).length, icon: '🔥' },
-  { id: 'yeni', name: 'Yeni Ürünler', count: tempProducts.filter(p => p.isNew).length, icon: '🆕' },
-  { id: 'coksatan', name: 'Çok Satan', count: tempProducts.filter(p => p.isBestSeller || p.isPopular).length, icon: '🏆' },
+  { id: 'all', name: 'Tümü', count: mockProducts.length, icon: '📦' },
+  { id: 'Elektronik', name: 'Elektronik', count: mockProducts.filter(p => p.category === 'Elektronik').length, icon: '📱' },
+  { id: 'Giyim', name: 'Giyim', count: mockProducts.filter(p => p.category === 'Giyim').length, icon: '👕' },
+  { id: 'Apple', name: 'Apple', count: mockProducts.filter(p => p.tags?.includes('apple')).length, icon: '🍎' },
+  { id: 'Samsung', name: 'Samsung', count: mockProducts.filter(p => p.tags?.includes('samsung')).length, icon: '📱' },
+  { id: 'indirim', name: 'İndirim', count: mockProducts.filter(p => p.discountRate).length, icon: '🔥' },
+  { id: 'yeni', name: 'Yeni Ürünler', count: mockProducts.filter(p => p.isFeatured).length, icon: '🆕' },
+  { id: 'hizli', name: 'Hızlı Teslimat', count: mockProducts.filter(p => p.isFastDelivery).length, icon: '🚚' },
 ];
 
 // AI Asistanı için arama önerileri
@@ -311,6 +113,13 @@ const ProductListScreen = ({ navigation, route }: any) => {
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // ✅ ROUTE PARAMETRELERİNİ AL VE KATEGORİYİ AYARLA
+  useEffect(() => {
+    if (route.params?.categoryId) {
+      setSelectedCategory(route.params.categoryId);
+    }
+  }, [route.params]);
+
   // Header opacity animation
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 100],
@@ -327,7 +136,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
 
   // AI Asistanı tetikleme
   const handleAIAssistant = () => {
-    navigation.navigate('Home'); // HomeScreen'deki AI modal'ı açılacak
+    navigation.navigate('Home');
   };
 
   // AI arama önerisi seçme
@@ -336,20 +145,19 @@ const ProductListScreen = ({ navigation, route }: any) => {
     setShowAISuggestions(false);
   };
 
-  // Filtreleme fonksiyonu
-  const filteredProducts = tempProducts.filter(product => {
+  // ✅ MOCK DATAYA GÖRE FİLTRELEME
+  const filteredProducts = mockProducts.filter(product => {
     const matchesCategory = selectedCategory === 'all' || 
-      product.category?.toLowerCase() === selectedCategory ||
-      product.brand?.toLowerCase() === selectedCategory ||
-      product.tags?.includes(selectedCategory) ||
-      (selectedCategory === 'indirim' && product.discount) ||
-      (selectedCategory === 'yeni' && product.isNew) ||
-      (selectedCategory === 'coksatan' && (product.isBestSeller || product.isPopular));
+      product.category === selectedCategory ||
+      product.tags?.includes(selectedCategory.toLowerCase()) ||
+      (selectedCategory === 'indirim' && product.discountRate) ||
+      (selectedCategory === 'yeni' && product.isFeatured) ||
+      (selectedCategory === 'hizli' && product.isFastDelivery);
     
     const matchesSearch = searchQuery === '' || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
       product.features?.some((f: string) => f.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchesCategory && matchesSearch;
@@ -365,9 +173,9 @@ const ProductListScreen = ({ navigation, route }: any) => {
       case 'rating':
         return b.rating - a.rating;
       case 'discount':
-        return (b.discount || 0) - (a.discount || 0);
+        return (b.discountRate || 0) - (a.discountRate || 0);
       case 'newest':
-        return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
+        return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
       default:
         return 0;
     }
@@ -380,6 +188,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
       activeOpacity={0.9}
     >
       <View style={styles.imageContainer}>
+        {/* ✅ RESİM KAYNAĞINI DOĞRUDAN item.image OLARAK VER */}
         <ProductImage 
           source={item.image} 
           style={styles.productImage}
@@ -388,22 +197,17 @@ const ProductListScreen = ({ navigation, route }: any) => {
         
         {/* Badge Container */}
         <View style={styles.badgeContainer}>
-          {item.discount && (
+          {item.discountRate && (
             <View style={styles.discountBadge}>
-              <Text style={styles.discountBadgeText}>%{item.discount}</Text>
+              <Text style={styles.discountBadgeText}>%{item.discountRate}</Text>
             </View>
           )}
-          {item.isNew && (
+          {item.isFeatured && (
             <View style={styles.newBadge}>
               <Text style={styles.newBadgeText}>🆕 Yeni</Text>
             </View>
           )}
-          {item.isBestSeller && (
-            <View style={styles.bestSellerBadge}>
-              <Text style={styles.bestSellerBadgeText}>🏆 Çok Satan</Text>
-            </View>
-          )}
-          {item.fastDelivery && (
+          {item.isFastDelivery && (
             <View style={styles.deliveryBadge}>
               <Text style={styles.deliveryBadgeText}>🚚 Hızlı</Text>
             </View>
@@ -422,7 +226,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
       </View>
       
       <View style={styles.productInfo}>
-        <Text style={styles.productBrand}>{item.brand}</Text>
+        <Text style={styles.productBrand}>{item.tags?.[0] || item.category}</Text>
         <Text style={styles.productCategory}>#{item.category}</Text>
         <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
         
@@ -433,7 +237,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
           )}
         </View>
 
-        {item.discount && item.originalPrice && (
+        {item.discountRate && item.originalPrice && (
           <View style={styles.savingsContainer}>
             <Text style={styles.savingsText}>
               💰 ₺{(item.originalPrice - item.price).toLocaleString('tr-TR')} tasarruf
@@ -482,17 +286,21 @@ const ProductListScreen = ({ navigation, route }: any) => {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.title}>🛍️ Ürünler</Text>
-              <Text style={styles.subtitle}>SmartCommerce AI ile akıllı alışveriş</Text>
+              <Text style={styles.subtitle}>
+                {route.params?.category ? `${route.params.category} kategorisi` : 'SmartCommerce AI ile akıllı alışveriş'}
+              </Text>
             </View>
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{tempProducts.length}</Text>
+                <Text style={styles.statNumber}>{sortedProducts.length}</Text>
                 <Text style={styles.statLabel}>Ürün</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>
-                  {(tempProducts.reduce((acc, p) => acc + p.rating, 0) / tempProducts.length).toFixed(1)}
+                  {sortedProducts.length > 0 ? 
+                    (sortedProducts.reduce((acc, p) => acc + p.rating, 0) / sortedProducts.length).toFixed(1) : '0'
+                  }
                 </Text>
                 <Text style={styles.statLabel}>Puan</Text>
               </View>
@@ -503,15 +311,15 @@ const ProductListScreen = ({ navigation, route }: any) => {
           <View style={styles.quickStats}>
             <View style={styles.quickStat}>
               <Text style={styles.quickStatIcon}>✅</Text>
-              <Text style={styles.quickStatText}>{tempProducts.filter(p => p.inStock).length} Stokta</Text>
+              <Text style={styles.quickStatText}>{sortedProducts.filter(p => p.inStock).length} Stokta</Text>
             </View>
             <View style={styles.quickStat}>
               <Text style={styles.quickStatIcon}>🔥</Text>
-              <Text style={styles.quickStatText}>{tempProducts.filter(p => p.discount).length} İndirim</Text>
+              <Text style={styles.quickStatText}>{sortedProducts.filter(p => p.discountRate).length} İndirim</Text>
             </View>
             <View style={styles.quickStat}>
               <Text style={styles.quickStatIcon}>🚚</Text>
-              <Text style={styles.quickStatText}>{tempProducts.filter(p => p.fastDelivery).length} Hızlı</Text>
+              <Text style={styles.quickStatText}>{sortedProducts.filter(p => p.isFastDelivery).length} Hızlı</Text>
             </View>
           </View>
         </View>
@@ -648,6 +456,9 @@ const ProductListScreen = ({ navigation, route }: any) => {
         <View style={styles.resultsInfo}>
           <Text style={styles.resultsText}>
             🔍 <Text style={styles.resultsCount}>{sortedProducts.length}</Text> ürün bulundu
+            {route.params?.category && (
+              <Text> - {route.params.category}</Text>
+            )}
           </Text>
           {(selectedCategory !== 'all' || searchQuery) && (
             <TouchableOpacity 
@@ -661,33 +472,6 @@ const ProductListScreen = ({ navigation, route }: any) => {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* AI Quick Actions */}
-        {sortedProducts.length > 0 && (
-          <View style={styles.aiQuickActions}>
-            <Text style={styles.aiQuickActionsTitle}>⚡ AI Hızlı İşlemler</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.aiActionsRow}>
-                <TouchableOpacity style={styles.aiActionButton}>
-                  <Text style={styles.aiActionIcon}>💰</Text>
-                  <Text style={styles.aiActionText}>Bütçe Planı</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.aiActionButton}>
-                  <Text style={styles.aiActionIcon}>⭐</Text>
-                  <Text style={styles.aiActionText}>En İyiler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.aiActionButton}>
-                  <Text style={styles.aiActionIcon}>🚚</Text>
-                  <Text style={styles.aiActionText}>Hızlı Teslimat</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.aiActionButton}>
-                  <Text style={styles.aiActionIcon}>🔥</Text>
-                  <Text style={styles.aiActionText}>Süper Fırsatlar</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        )}
 
         {/* Products Grid */}
         {sortedProducts.length > 0 ? (
@@ -705,7 +489,11 @@ const ProductListScreen = ({ navigation, route }: any) => {
             <Text style={styles.emptyStateIcon}>🔍</Text>
             <Text style={styles.emptyStateTitle}>Ürün bulunamadı</Text>
             <Text style={styles.emptyStateText}>
-              Arama kriterlerinize uygun ürün bulunamadı.{'\n'}
+              {route.params?.category ? 
+                `${route.params.category} kategorisinde ürün bulunamadı.` : 
+                'Arama kriterlerinize uygun ürün bulunamadı.'
+              }
+              {'\n'}
               AI asistanı size özel öneriler sunabilir!
             </Text>
             
@@ -736,6 +524,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
   );
 };
 
+// STYLES KISMI - TAM VE EKSİKSİZ
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -1054,38 +843,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64748b',
   },
-  aiQuickActions: {
-    marginBottom: 20,
-  },
-  aiQuickActionsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 12,
-  },
-  aiActionsRow: {
-    flexDirection: 'row',
-  },
-  aiActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  aiActionIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  aiActionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
-  },
   productsGrid: {
     paddingBottom: 20,
   },
@@ -1167,18 +924,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   newBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  bestSellerBadge: {
-    backgroundColor: '#f59e0b',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginBottom: 4,
-  },
-  bestSellerBadgeText: {
     fontSize: 10,
     fontWeight: '800',
     color: '#FFFFFF',

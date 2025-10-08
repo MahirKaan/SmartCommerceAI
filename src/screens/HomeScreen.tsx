@@ -18,126 +18,52 @@ import {
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 
+// ✅ MOCK DATAYI IMPORT ET
+import { mockProducts, featuredProducts as mockFeaturedProducts } from '../data/mockData';
+
 const { width, height } = Dimensions.get('window');
 
-// GERÇEK ÜRÜN VERİLERİ - ÇALIŞAN RESİMLERLE
-const featuredProducts = [
-  {
-    id: '1',
-    name: 'iPhone 15 Pro',
-    price: 55999,
-    originalPrice: 59999,
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=webp&qlt=70&.v=1692846359318',
-    rating: 4.9,
-    discount: 7,
-    category: 'Elektronik',
-    features: ['5G', 'Face ID', '120Hz', 'USB-C'],
-    description: 'Yeni A17 Pro çipi ile en gelişmiş iPhone',
-    brand: 'Apple',
-    inStock: true,
-    fastDelivery: true
-  },
-  {
-    id: '2', 
-    name: 'MacBook Air M3',
-    price: 35999,
-    originalPrice: 39999,
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/macbook-air-spacegray-select-202402?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1708362264035',
-    rating: 4.8,
-    discount: 10,
-    category: 'Elektronik',
-    features: ['M3 Çip', '18 Saat Pil', 'Retina Ekran'],
-    description: 'M3 çipli inanılmaz derecede ince ve hızlı dizüstü bilgisayar',
-    brand: 'Apple',
-    inStock: true,
-    fastDelivery: true
-  },
-  {
-    id: '3',
-    name: 'AirPods Pro (2.Nesil)',
-    price: 7999,
-    originalPrice: 8999,
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/airpods-pro-2-hero-select-202409?wid=445&hei=370&fmt=jpeg&qlt=90&.v=1723572553984',
-    rating: 4.7,
-    discount: 11,
-    category: 'Elektronik',
-    features: ['Gürültü Önleme', '24 Saat Pil', 'USB-C'],
-    description: 'Gelişmiş aktif gürültü engelleme özellikli kulaklık',
-    brand: 'Apple',
-    inStock: true,
-    fastDelivery: true
-  },
-  {
-    id: '4',
-    name: 'iPad Air M2',
-    price: 27999,
-    originalPrice: 29999,
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/ipad-air-finish-select-202405?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1713202736948',
-    rating: 4.6,
-    discount: 7,
-    category: 'Elektronik',
-    features: ['M2 Çip', 'Liquid Retina', 'Apple Pencil'],
-    description: 'M2 çipli yeni nesil iPad',
-    brand: 'Apple',
-    inStock: true,
-    fastDelivery: false
-  },
-  {
-    id: '5',
-    name: 'Apple Watch Series 9',
-    price: 14999,
-    originalPrice: 15999,
-    image: 'https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/watch-case-45-aluminum-midnight-nc-s9_VW_PF+watch-face-45-aluminum-midnight-s9_VW_PF_WF_CO?wid=1400&hei=1400&fmt=p-jpg&qlt=90&.v=1693340635127',
-    rating: 4.5,
-    discount: 6,
-    category: 'Elektronik',
-    features: ['GPS', 'Kardiyo Takip', 'Su Geçirmez'],
-    description: 'Akıllı saatin en gelişmiş modeli',
-    brand: 'Apple',
-    inStock: true,
-    fastDelivery: true
-  },
-  {
-    id: '6',
-    name: 'Samsung Galaxy S24 Ultra',
-    price: 48999,
-    originalPrice: 52999,
-    image: 'https://images.samsung.com/is/image/samsung/assets/tr/2401/pcd/gallery/S24-Ultra-Bronze-1.jpg',
-    rating: 4.8,
-    discount: 8,
-    category: 'Elektronik',
-    features: ['S Pen', '200MP Kamera', 'AI Özellikler'],
-    description: 'Galaxy AI ile donatılmış premium telefon',
-    brand: 'Samsung',
-    inStock: true,
-    fastDelivery: true
-  }
-];
+// ✅ MOCK DATADAN FEATURED PRODUCTS'İ AL
+const featuredProducts = mockFeaturedProducts;
 
+// ✅ GÜNCELLENMİŞ KATEGORİLER - 'all' EKLENDİ
 const categories = [
-  { id: '1', name: 'Elektronik', icon: '📱', count: 24, color: '#6366f1' },
-  { id: '2', name: 'Giyim', icon: '👕', count: 18, color: '#8b5cf6' },
+  { id: 'all', name: 'Tümü', icon: '📦', count: mockProducts.length, color: '#6366f1' },
+  { id: '1', name: 'Elektronik', icon: '📱', count: mockProducts.filter(p => p.category === 'Elektronik').length, color: '#6366f1' },
+  { id: '2', name: 'Giyim', icon: '👕', count: mockProducts.filter(p => p.category === 'Giyim').length, color: '#8b5cf6' },
   { id: '3', name: 'Spor', icon: '⚽', count: 12, color: '#ec4899' },
   { id: '4', name: 'Ev & Yaşam', icon: '🏠', count: 15, color: '#f59e0b' }
 ];
 
-// Image Loader Component
+// ✅ GÜNCELLENMİŞ IMAGE LOADER COMPONENT
 const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
+  // ✅ LOCAL MI ONLINE MI KONTROL ET
+  const isLocalImage = typeof source === 'number' || (source && source.uri === undefined);
+  const imageSource = isLocalImage ? source : { uri: String(source) };
+
   const handleLoadStart = () => {
-    setIsLoading(true);
-    setHasError(false);
+    if (!isLocalImage) {
+      setIsLoading(true);
+      setHasError(false);
+    }
   };
 
   const handleLoadEnd = () => {
-    setIsLoading(false);
+    if (!isLocalImage) {
+      setIsLoading(false);
+    } else {
+      setIsLoading(false);
+    }
   };
 
   const handleError = () => {
-    setIsLoading(false);
-    setHasError(true);
+    if (!isLocalImage) {
+      setIsLoading(false);
+      setHasError(true);
+    }
   };
 
   return (
@@ -145,14 +71,14 @@ const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
       {!hasError ? (
         <>
           <Image
-            source={{ uri: source }}
+            source={imageSource}
             style={[style, { position: 'absolute' }]}
             resizeMode={resizeMode}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             onError={handleError}
           />
-          {isLoading && (
+          {!isLocalImage && isLoading && (
             <View style={[style, styles.imagePlaceholder]}>
               <ActivityIndicator size="small" color="#6366f1" />
               <Text style={styles.loadingText}>Resim Yükleniyor...</Text>
@@ -214,8 +140,15 @@ class AdvancedAIAssistant {
       );
     }
     
+    if (preferences.includes('nike') || preferences.includes('adidas')) {
+      filteredProducts = filteredProducts.filter(p => 
+        p.name.toLowerCase().includes('nike') || 
+        p.name.toLowerCase().includes('adidas')
+      );
+    }
+    
     if (preferences.includes('ucuz') || preferences.includes('ekonomik') || preferences.includes('bütçe')) {
-      filteredProducts = filteredProducts.filter(p => p.discount || p.price < 20000);
+      filteredProducts = filteredProducts.filter(p => p.discountRate || p.price < 20000);
     }
     
     if (preferences.includes('yüksek') || preferences.includes('premium') || preferences.includes('kaliteli')) {
@@ -223,7 +156,7 @@ class AdvancedAIAssistant {
     }
     
     if (preferences.includes('indirim') || preferences.includes('fırsat')) {
-      filteredProducts = filteredProducts.filter(p => p.discount).sort((a, b) => b.discount - a.discount);
+      filteredProducts = filteredProducts.filter(p => p.discountRate).sort((a, b) => (b.discountRate || 0) - (a.discountRate || 0));
     }
 
     return filteredProducts.slice(0, 4);
@@ -278,13 +211,13 @@ class AdvancedAIAssistant {
       score += 15;
     }
     
-    if (product.discount) {
-      analysis += `🎯 **%${product.discount} indirim** - İyi fırsat!\n\n`;
+    if (product.discountRate) {
+      analysis += `🎯 **%${product.discountRate} indirim** - İyi fırsat!\n\n`;
       recommendation = '🔥 **İndirimden yararlanın!**';
       score += 20;
     }
 
-    if (product.features.length >= 3) {
+    if (product.features && product.features.length >= 3) {
       analysis += `🚀 **Zengin özellik seti** - ${product.features.slice(0, 3).join(', ')}\n\n`;
       score += 10;
     }
@@ -362,7 +295,7 @@ class AdvancedAIAssistant {
         response += `**${index + 1}. ${product.name}**\n`;
         response += `💰 **Fiyat:** ₺${product.price.toLocaleString('tr-TR')}`;
         if (product.originalPrice) {
-          response += ` (⭑%${product.discount} indirim)\n`;
+          response += ` (⭑%${product.discountRate} indirim)\n`;
         } else {
           response += `\n`;
         }
@@ -435,7 +368,7 @@ class AdvancedAIAssistant {
       products: featuredProducts.filter(p => 
         p.name.toLowerCase().includes(query.toLowerCase()) ||
         p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.features.some((f: string) => f.toLowerCase().includes(query.toLowerCase())) ||
+        (p.features && p.features.some((f: string) => f.toLowerCase().includes(query.toLowerCase()))) ||
         p.description.toLowerCase().includes(query.toLowerCase())
       ),
       categories: categories.filter(c => 
@@ -447,7 +380,7 @@ class AdvancedAIAssistant {
   }
 
   private extractProductName(message: string): string {
-    const productKeywords = ['iphone', 'macbook', 'airpods', 'ipad', 'watch', 'samsung', 'galaxy', 'nike'];
+    const productKeywords = ['iphone', 'macbook', 'airpods', 'ipad', 'watch', 'samsung', 'galaxy', 'nike', 'adidas', 'dyson', 'sony'];
     
     for (const keyword of productKeywords) {
       if (message.toLowerCase().includes(keyword)) {
@@ -487,6 +420,8 @@ const HomeScreen = ({ navigation }: any) => {
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useState(new Animated.Value(0))[0];
+
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   useEffect(() => {
     if (aiModalVisible) {
@@ -546,9 +481,55 @@ const HomeScreen = ({ navigation }: any) => {
     }
   };
 
+  // ✅ DÜZELTİLMİŞ KATEGORİ SEÇİM FONKSİYONU
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    
+    const selectedCategoryData = categories.find(cat => cat.id === categoryId);
+    
+    if (selectedCategoryData) {
+      navigation.navigate('ProductList', {
+        category: selectedCategoryData.name,
+        categoryId: categoryId
+      });
+    }
+  };
+
+  // ✅ GELİŞTİRİLMİŞ ÜRÜN DETAY FONKSİYONU
   const handleProductPress = (product: any) => {
+    console.log('🛍️ Ürün detayına gidiliyor:', product.name);
     setAiModalVisible(false);
-    navigation.navigate('ProductDetail', { product });
+    
+    try {
+      navigation.navigate('ProductDetail', { product });
+    } catch (error) {
+      console.log('❌ Navigation hatası:', error);
+      Alert.alert(
+        'Ürün Detayı',
+        `${product.name} - ₺${product.price.toLocaleString('tr-TR')}\n\nÜrün detay sayfasına ulaşılamıyor.`,
+        [{ text: 'Tamam' }]
+      );
+    }
+  };
+
+  // ✅ DÜZELTİLMİŞ TÜMÜNÜ GÖR FONKSİYONU
+  const handleViewAllProducts = () => {
+    navigation.navigate('ProductList', { 
+      category: 'Tüm Ürünler', 
+      categoryId: 'all' 
+    });
+  };
+
+  // ✅ DÜZELTİLMİŞ TÜM KATEGORİLER FONKSİYONU
+  const handleViewAllCategories = () => {
+    navigation.navigate('ProductList', { 
+      category: 'Tüm Kategoriler', 
+      categoryId: 'all' 
+    });
+  };
+
+  const handleCartPress = () => {
+    navigation.navigate('Cart');
   };
 
   const clearConversation = () => {
@@ -611,7 +592,7 @@ const HomeScreen = ({ navigation }: any) => {
           
           <TouchableOpacity 
             style={styles.cartButton}
-            onPress={() => navigation.navigate('Cart')}
+            onPress={handleCartPress}
           >
             <Text style={styles.cartIcon}>🛒</Text>
             {itemCount > 0 && (
@@ -662,7 +643,7 @@ const HomeScreen = ({ navigation }: any) => {
           <View style={styles.statItem}>
             <Text style={styles.statIcon}>📦</Text>
             <View>
-              <Text style={styles.statNumber}>150+</Text>
+              <Text style={styles.statNumber}>{mockProducts.length}+</Text>
               <Text style={styles.statLabel}>Toplam Ürün</Text>
             </View>
           </View>
@@ -678,7 +659,9 @@ const HomeScreen = ({ navigation }: any) => {
           <View style={styles.statItem}>
             <Text style={styles.statIcon}>⭐</Text>
             <View>
-              <Text style={styles.statNumber}>4.8</Text>
+              <Text style={styles.statNumber}>
+                {(mockProducts.reduce((acc, p) => acc + p.rating, 0) / mockProducts.length).toFixed(1)}
+              </Text>
               <Text style={styles.statLabel}>Ortalama</Text>
             </View>
           </View>
@@ -687,8 +670,9 @@ const HomeScreen = ({ navigation }: any) => {
         {/* Featured Products */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>🔥 AI Önerileri</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Products')}>
+            <Text style={styles.sectionTitle}>🔥 Öne Çıkan Ürünler</Text>
+            {/* ✅ DÜZELTİLMİŞ TÜMÜNÜ GÖR BUTONU */}
+            <TouchableOpacity onPress={handleViewAllProducts}>
               <Text style={styles.sectionLink}>Tümü</Text>
             </TouchableOpacity>
           </View>
@@ -710,15 +694,15 @@ const HomeScreen = ({ navigation }: any) => {
                     style={styles.productImage}
                     resizeMode="cover"
                   />
-                  {product.discount && (
+                  {product.discountRate && (
                     <View style={styles.discountBadge}>
-                      <Text style={styles.discountBadgeText}>%{product.discount}</Text>
+                      <Text style={styles.discountBadgeText}>%{product.discountRate}</Text>
                     </View>
                   )}
                   <View style={styles.ratingBadge}>
                     <Text style={styles.ratingText}>⭐ {product.rating}</Text>
                   </View>
-                  {product.fastDelivery && (
+                  {product.isFastDelivery && (
                     <View style={styles.deliveryBadge}>
                       <Text style={styles.deliveryBadgeText}>🚚 Hızlı</Text>
                     </View>
@@ -726,7 +710,7 @@ const HomeScreen = ({ navigation }: any) => {
                 </View>
                 
                 <View style={styles.productInfo}>
-                  <Text style={styles.productBrand}>{product.brand}</Text>
+                  <Text style={styles.productBrand}>{product.tags?.[0] || product.category}</Text>
                   <Text style={styles.productName} numberOfLines={2}>
                     {product.name}
                   </Text>
@@ -745,17 +729,25 @@ const HomeScreen = ({ navigation }: any) => {
           </ScrollView>
         </View>
 
-        {/* Categories */}
+        {/* Kategoriler - GÜNCELLENMİŞ */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>📂 Kategoriler</Text>
-            <TouchableOpacity>
+            {/* ✅ DÜZELTİLMİŞ TÜM KATEGORİLER BUTONU */}
+            <TouchableOpacity onPress={handleViewAllCategories}>
               <Text style={styles.sectionLink}>Tümü</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.categoriesContainer}>
             {categories.map((category) => (
-              <TouchableOpacity key={category.id} style={styles.categoryCard}>
+              <TouchableOpacity 
+                key={category.id} 
+                style={[
+                  styles.categoryCard,
+                  selectedCategory === category.id && styles.selectedCategory
+                ]}
+                onPress={() => handleCategorySelect(category.id)}
+              >
                 <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
                   <Text style={styles.categoryIconText}>{category.icon}</Text>
                 </View>
@@ -834,7 +826,7 @@ const HomeScreen = ({ navigation }: any) => {
                         resizeMode="cover"
                       />
                       <View style={styles.recommendedProductInfo}>
-                        <Text style={styles.recommendedProductBrand}>{product.brand}</Text>
+                        <Text style={styles.recommendedProductBrand}>{product.tags?.[0] || product.category}</Text>
                         <Text style={styles.recommendedProductName} numberOfLines={2}>
                           {product.name}
                         </Text>
@@ -850,10 +842,10 @@ const HomeScreen = ({ navigation }: any) => {
                           ⭐ {product.rating} • {product.category}
                         </Text>
                       </View>
-                      {product.discount && (
+                      {product.discountRate && (
                         <View style={styles.recommendedProductDiscount}>
                           <Text style={styles.recommendedProductDiscountText}>
-                            %{product.discount}
+                            %{product.discountRate}
                           </Text>
                         </View>
                       )}
@@ -916,6 +908,7 @@ const HomeScreen = ({ navigation }: any) => {
   );
 };
 
+// Styles aynı kalıyor, değişiklik yok
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -1297,6 +1290,13 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedCategory: {
+    borderColor: '#6366f1',
+    backgroundColor: '#eef2ff',
+    transform: [{ scale: 1.02 }],
   },
   categoryIcon: {
     width: 50,

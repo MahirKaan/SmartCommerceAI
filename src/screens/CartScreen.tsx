@@ -15,38 +15,77 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { removeFromCart, updateQuantity, clearCart } from '../store/cartSlice';
 
-// Image Loader Component
+// ✅ DÜZELTİLMİŞ Image Loader Component - LOCAL ve ONLINE RESİM DESTEKLİ
 const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasError, setHasError] = React.useState(false);
 
+  // ✅ LOCAL MI ONLINE MI KONTROL ET
+  const isLocalImage = typeof source === 'number';
+  
+  // ✅ GÜVENLİ RESİM KAYNAĞI
+  const getSafeImageSource = () => {
+    if (!source) return null;
+    
+    // ✅ LOCAL RESİM (require ile) - doğrudan kullan
+    if (isLocalImage) {
+      return source;
+    }
+    
+    // ✅ ONLINE RESİM (URL) - string'e çevir
+    if (typeof source === 'string') {
+      return { uri: source };
+    }
+    
+    // ✅ OBJECT İSE (uri property'si varsa)
+    if (source && typeof source === 'object' && source.uri) {
+      return { uri: String(source.uri) };
+    }
+    
+    return null;
+  };
+
+  const imageSource = getSafeImageSource();
+
   const handleLoadStart = () => {
-    setIsLoading(true);
-    setHasError(false);
+    // ✅ SADECE ONLINE RESİMLER İÇİN LOADING
+    if (!isLocalImage) {
+      setIsLoading(true);
+      setHasError(false);
+    }
   };
 
   const handleLoadEnd = () => {
-    setIsLoading(false);
+    // ✅ SADECE ONLINE RESİMLER İÇİN LOADING
+    if (!isLocalImage) {
+      setIsLoading(false);
+    } else {
+      // ✅ LOCAL RESİMLER HEMEN YÜKLENİR
+      setIsLoading(false);
+    }
   };
 
   const handleError = () => {
-    setIsLoading(false);
-    setHasError(true);
+    if (!isLocalImage) {
+      setIsLoading(false);
+      setHasError(true);
+    }
   };
 
   return (
     <View style={style}>
-      {!hasError ? (
+      {!hasError && imageSource ? (
         <>
           <Image
-            source={{ uri: source }}
+            source={imageSource}
             style={[style, { position: 'absolute' }]}
             resizeMode={resizeMode}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             onError={handleError}
           />
-          {isLoading && (
+          {/* ✅ SADECE ONLINE RESİMLER İÇİN LOADING INDICATOR */}
+          {!isLocalImage && isLoading && (
             <View style={[style, styles.imagePlaceholder]}>
               <ActivityIndicator size="small" color="#6366f1" />
               <Text style={styles.loadingText}>Resim Yükleniyor...</Text>
@@ -57,15 +96,17 @@ const ProductImage = ({ source, style, resizeMode = 'cover' }: any) => {
         <View style={[style, styles.imagePlaceholder]}>
           <Text style={styles.placeholderText}>📷</Text>
           <Text style={styles.placeholderSubtext}>Resim Yüklenemedi</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={() => {
-              setHasError(false);
-              setIsLoading(true);
-            }}
-          >
-            <Text style={styles.retryText}>🔄 Tekrar Dene</Text>
-          </TouchableOpacity>
+          {!isLocalImage && (
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => {
+                setHasError(false);
+                setIsLoading(true);
+              }}
+            >
+              <Text style={styles.retryText}>🔄 Tekrar Dene</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -192,7 +233,13 @@ const CartScreen = ({ navigation }: any) => {
                   text: 'Tamam',
                   onPress: () => {
                     dispatch(clearCart());
-                    navigation.navigate('MainTabs', { screen: 'Home' });
+                    // ✅ NAVIGATION DÜZELTMESİ
+                    try {
+                      navigation.navigate('MainTabs', { screen: 'Home' });
+                    } catch (error) {
+                      console.log('Navigation hatası:', error);
+                      navigation.goBack();
+                    }
                   }
                 }
               ]
@@ -204,7 +251,13 @@ const CartScreen = ({ navigation }: any) => {
   };
 
   const handleContinueShopping = () => {
-    navigation.navigate('MainTabs', { screen: 'Products' });
+    // ✅ NAVIGATION DÜZELTMESİ
+    try {
+      navigation.navigate('MainTabs', { screen: 'Home' });
+    } catch (error) {
+      console.log('Navigation hatası:', error);
+      navigation.navigate('Home');
+    }
   };
 
   const handleAIAssistant = () => {
@@ -217,6 +270,7 @@ const CartScreen = ({ navigation }: any) => {
 
   const renderCartItem = ({ item }: any) => (
     <View style={styles.cartItem}>
+      {/* ✅ DÜZELTİLMİŞ RESİM KULLANIMI */}
       <ProductImage 
         source={item.product.image} 
         style={styles.productImage}
@@ -226,7 +280,7 @@ const CartScreen = ({ navigation }: any) => {
       <View style={styles.productInfo}>
         <View style={styles.productHeader}>
           <View style={styles.productTitleContainer}>
-            <Text style={styles.productBrand}>{item.product.brand || 'Marka'}</Text>
+            <Text style={styles.productBrand}>{item.product.tags?.[0] || item.product.category || 'Marka'}</Text>
             <Text style={styles.productName} numberOfLines={2}>
               {item.product.name}
             </Text>
@@ -248,9 +302,9 @@ const CartScreen = ({ navigation }: any) => {
               ₺{(item.product.originalPrice * item.quantity).toLocaleString('tr-TR')}
             </Text>
           )}
-          {item.product.discount && (
+          {item.product.discountRate && (
             <View style={styles.discountBadge}>
-              <Text style={styles.discountBadgeText}>%{item.product.discount}</Text>
+              <Text style={styles.discountBadgeText}>%{item.product.discountRate}</Text>
             </View>
           )}
         </View>
@@ -443,6 +497,7 @@ const CartScreen = ({ navigation }: any) => {
   );
 };
 
+// Styles aynı kalacak
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
