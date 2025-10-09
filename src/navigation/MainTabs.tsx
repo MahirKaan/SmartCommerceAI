@@ -1,127 +1,80 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+
+// Screens - Relative path kullanıyoruz
 import HomeScreen from '../screens/HomeScreen';
 import ProductListScreen from '../screens/ProductListScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
 import CartScreen from '../screens/CartScreen';
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
+const FavoritesStack = createNativeStackNavigator();
 
-// Type definitions for tab icons
-interface TabIconProps {
-  focused: boolean;
-}
-
-const MainTabs = () => {
+// Home Stack Navigator
+const HomeStackNavigator = () => {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarStyle: styles.tabBar,
-        tabBarItemStyle: styles.tabItem,
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen 
-        name="Home" 
+    <HomeStack.Navigator>
+      <HomeStack.Screen 
+        name="HomeMain" 
         component={HomeScreen}
-        options={{
-          tabBarIcon: ({ focused }: TabIconProps) => (
-            <View style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-              <Text style={[styles.tabIconText, focused && styles.tabIconTextFocused]}>
-                🏠
-              </Text>
-            </View>
-          ),
-          tabBarLabel: ({ focused }: TabIconProps) => (
-            <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>
-              Ana Sayfa
-            </Text>
-          ),
-        }}
+        options={{ 
+          title: 'Ana Sayfa',
+          headerStyle: {
+            backgroundColor: '#6366f1',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }} 
       />
-      <Tab.Screen 
-        name="Products" 
+      <HomeStack.Screen 
+        name="ProductList" 
         component={ProductListScreen}
-        options={{
-          tabBarIcon: ({ focused }: TabIconProps) => (
-            <View style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-              <Text style={[styles.tabIconText, focused && styles.tabIconTextFocused]}>
-                📦
-              </Text>
-            </View>
-          ),
-          tabBarLabel: ({ focused }: TabIconProps) => (
-            <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>
-              Ürünler
-            </Text>
-          ),
-        }}
+        options={{ 
+          title: 'Ürünler',
+          headerStyle: {
+            backgroundColor: '#6366f1',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }} 
       />
-      <Tab.Screen 
-        name="Cart" 
-        component={CartScreen}
-        options={{
-          tabBarIcon: ({ focused }: TabIconProps) => (
-            <View style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-              <Text style={[styles.tabIconText, focused && styles.tabIconTextFocused]}>
-                🛒
-              </Text>
-            </View>
-          ),
-          tabBarLabel: ({ focused }: TabIconProps) => (
-            <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>
-              Sepet
-            </Text>
-          ),
-        }}
-      />
-    </Tab.Navigator>
+    </HomeStack.Navigator>
   );
 };
 
-const styles = StyleSheet.create({
-  tabBar: {
-    position: 'absolute',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    height: 80,
-    paddingBottom: 20,
-    paddingTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  tabItem: {
-    paddingVertical: 4,
-  },
-  tabIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  tabIconFocused: {
-    transform: [{ scale: 1.1 }],
-  },
-  tabIconText: {
-    fontSize: 20,
-  },
-  tabIconTextFocused: {
-    transform: [{ scale: 1.1 }],
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  tabLabelFocused: {
-    color: '#6366f1',
-    fontWeight: '600',
-  },
-});
+// Favorites Stack Navigator
+const FavoritesStackNavigator = () => {
+  return (
+    <FavoritesStack.Navigator>
+      <FavoritesStack.Screen 
+        name="FavoritesMain" 
+        component={FavoritesScreen}
+        options={{ 
+          title: 'Favorilerim',
+          headerStyle: {
+            backgroundColor: '#6366f1',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }} 
+      />
+    </FavoritesStack.Navigator>
+  );
+};
+
+const MainTabs = () => {
+  return (
+    <HomeStackNavigator />
+  );
+};
 
 export default MainTabs;

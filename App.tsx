@@ -11,9 +11,15 @@ import { setUser } from './src/store/authSlice';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import HomeScreen from './src/screens/HomeScreen'; // ✅ EKSİK OLAN IMPORT EKLENDİ
+import ProductListScreen from './src/screens/ProductListScreen';
 import ProductDetailScreen from './src/screens/ProductDetailScreen';
 import CartScreen from './src/screens/CartScreen';
-import ProductListScreen from './src/screens/ProductListScreen'; // BU EKSİKTİ - EKLENDİ
+import FavoritesScreen from './src/screens/FavoritesScreen'; // ✅ FAVORİLER EKRANI DA EKLENDİ
+
+// ÖDEME EKRANLARI
+import CheckoutScreen from './src/screens/CheckoutScreen';
+import OrderSuccessScreen from './src/screens/OrderSuccessScreen';
 
 // Navigation
 import MainTabs from './src/navigation/MainTabs';
@@ -58,6 +64,7 @@ const AppContent = () => {
               component={MainTabs} 
               options={{ headerShown: false }} 
             />
+            
             {/* ProductList Screen'i Stack Navigator'a EKLENDİ */}
             <Stack.Screen 
               name="ProductList" 
@@ -73,6 +80,7 @@ const AppContent = () => {
                 },
               }} 
             />
+            
             <Stack.Screen 
               name="ProductDetail" 
               component={ProductDetailScreen} 
@@ -87,6 +95,7 @@ const AppContent = () => {
                 },
               }} 
             />
+            
             <Stack.Screen 
               name="Cart" 
               component={CartScreen}
@@ -99,6 +108,46 @@ const AppContent = () => {
                 headerTitleStyle: {
                   fontWeight: 'bold',
                 },
+              }} 
+            />
+            
+            {/* ✅ FAVORİLER EKRANI STACK'E EKLENDİ */}
+            <Stack.Screen 
+              name="Favorites" 
+              component={FavoritesScreen}
+              options={{ 
+                title: 'Favorilerim',
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }} 
+            />
+            
+            {/* ✅ YENİ EKLENEN ÖDEME EKRANLARI */}
+            <Stack.Screen 
+              name="Checkout" 
+              component={CheckoutScreen}
+              options={{ 
+                title: 'Ödeme',
+                headerStyle: {
+                  backgroundColor: '#6366f1',
+                },
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }} 
+            />
+            
+            <Stack.Screen 
+              name="OrderSuccess" 
+              component={OrderSuccessScreen}
+              options={{ 
+                headerShown: false
               }} 
             />
           </>

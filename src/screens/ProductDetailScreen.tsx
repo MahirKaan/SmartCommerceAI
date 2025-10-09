@@ -256,6 +256,90 @@ const AddedToCartModal = ({ visible, onClose, onGoToCart, product, quantity }: a
   );
 };
 
+// ✅ FAVORİ EKLENDİ MODAL COMPONENT
+const AddedToFavoritesModal = ({ visible, onClose, onGoToFavorites, product }: any) => {
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>❤️ Favorilere Eklendi!</Text>
+              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Product Info */}
+            <View style={styles.modalProductInfo}>
+              <ProductImage 
+                source={product.image} 
+                style={styles.modalProductImage}
+                resizeMode="cover"
+              />
+              <View style={styles.modalProductDetails}>
+                <Text style={styles.modalProductName} numberOfLines={2}>
+                  {product.name}
+                </Text>
+                <Text style={styles.modalProductPrice}>
+                  ₺{product.price.toLocaleString('tr-TR')}
+                </Text>
+                <Text style={styles.modalProductCategory}>
+                  {product.category}
+                </Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.continueShoppingButton}
+                onPress={onClose}
+              >
+                <Text style={styles.continueShoppingText}>🛒 Alışverişe Devam Et</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.goToFavoritesButton}
+                onPress={onGoToFavorites}
+              >
+                <Text style={styles.goToFavoritesText}>❤️ Favorilere Git</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Actions */}
+            <View style={styles.quickActions}>
+              <Text style={styles.quickActionsTitle}>Hızlı İşlemler:</Text>
+              <View style={styles.quickActionsRow}>
+                <TouchableOpacity style={styles.quickActionButton}>
+                  <Text style={styles.quickActionIcon}>💳</Text>
+                  <Text style={styles.quickActionText}>Hemen Al</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.quickActionButton}>
+                  <Text style={styles.quickActionIcon}>🛒</Text>
+                  <Text style={styles.quickActionText}>Sepete Ekle</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.quickActionButton}>
+                  <Text style={styles.quickActionIcon}>📤</Text>
+                  <Text style={styles.quickActionText}>Paylaş</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const ProductDetailScreen = ({ route, navigation }: any) => {
   // DEBUG: Route params kontrolü
   console.log('🔍 ProductDetailScreen - route.params:', route.params);
@@ -292,6 +376,8 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showCartModal, setShowCartModal] = useState(false);
+  const [showFavoriteModal, setShowFavoriteModal] = useState(false); // ✅ FAVORİ MODAL STATE'İ
+  const [favorites, setFavorites] = useState<any[]>([]); // ✅ FAVORİLER STATE'İ
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // DÜZELTME: Gerçek çalışan alternatif resimler
@@ -366,6 +452,95 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
+
+  // ✅ FAVORİ EKLE/ÇIKAR FONKSİYONU
+  const toggleFavorite = () => {
+    console.log('❤️ Favori butonuna basıldı');
+    
+    if (isFavorite) {
+      // Favoriden çıkar
+      setIsFavorite(false);
+      setFavorites(prev => prev.filter(fav => fav.id !== product.id));
+      Alert.alert('Favorilerden Kaldırıldı', `${product.name} favorilerinizden kaldırıldı.`);
+    } else {
+      // Favoriye ekle
+      setIsFavorite(true);
+      const updatedFavorites = [...favorites, product];
+      setFavorites(updatedFavorites);
+      
+      // ✅ FAVORİ EKLENDİĞİNDE MODAL GÖSTER
+      setShowFavoriteModal(true);
+    }
+  };
+
+  // ✅ FAVORİLER SAYFASINA GİT FONKSİYONU
+  const navigateToFavorites = () => {
+    console.log('🚀 Navigate to favorites called');
+    
+    // Önce modal'ı kapat
+    setShowFavoriteModal(false);
+    
+    // Tüm navigation yöntemlerini dene
+    setTimeout(() => {
+      try {
+        // Yöntem 1: Direct navigate
+        console.log('🔄 Trying direct navigation to Favorites...');
+        navigation.navigate('Favorites', { 
+          favorites: favorites 
+        });
+      } catch (error1) {
+        console.log('❌ Direct navigation failed:', error1);
+        
+        try {
+          // Yöntem 2: getParent ile
+          console.log('🔄 Trying getParent navigation...');
+          if (navigation.getParent) {
+            navigation.getParent()?.navigate('Favorites', { 
+              favorites: favorites 
+            });
+          } else {
+            navigation.navigate('Favorites', { 
+              favorites: favorites 
+            });
+          }
+        } catch (error2) {
+          console.log('❌ GetParent navigation failed:', error2);
+          
+          try {
+            // Yöntem 3: Tab navigator
+            console.log('🔄 Trying tab navigation...');
+            navigation.navigate('Tabs', { 
+              screen: 'Favorites',
+              params: { favorites: favorites }
+            });
+          } catch (error3) {
+            console.log('❌ Tab navigation failed:', error3);
+            
+            try {
+              // Yöntem 4: MainTabs
+              console.log('🔄 Trying MainTabs navigation...');
+              navigation.navigate('MainTabs', { 
+                screen: 'Favorites',
+                params: { favorites: favorites }
+              });
+            } catch (error4) {
+              console.log('❌ MainTabs navigation failed:', error4);
+              
+              // Yöntem 5: Reset navigation
+              console.log('🔄 Trying reset navigation...');
+              navigation.reset({
+                index: 0,
+                routes: [{ 
+                  name: 'Favorites', 
+                  params: { favorites: favorites } 
+                }],
+              });
+            }
+          }
+        }
+      }
+    }, 300);
+  };
 
   // DÜZELTME: Sepete ekle fonksiyonu
   const handleAddToCart = () => {
@@ -466,10 +641,22 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     navigateToCart();
   };
 
+  // ✅ FAVORİLERE GİT FONKSİYONU
+  const handleGoToFavorites = () => {
+    console.log('❤️ Favorilere git butonuna basıldı');
+    navigateToFavorites();
+  };
+
   // DÜZELTME: Alışverişe devam et
   const handleContinueShopping = () => {
     console.log('🛒 Alışverişe devam et butonuna basıldı');
     setShowCartModal(false);
+  };
+
+  // ✅ FAVORİ MODAL KAPATMA
+  const handleCloseFavoriteModal = () => {
+    console.log('❌ Favori modal kapatıldı');
+    setShowFavoriteModal(false);
   };
 
   const handleShare = async () => {
@@ -489,16 +676,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     if (newQuantity >= 1 && newQuantity <= 10) {
       setQuantity(newQuantity);
     }
-  };
-
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    Alert.alert(
-      isFavorite ? 'Favorilerden Kaldırıldı' : 'Favorilere Eklendi',
-      isFavorite 
-        ? `${product.name} favorilerinizden kaldırıldı.`
-        : `${product.name} favorilerinize eklendi!`
-    );
   };
 
   const handleScroll = Animated.event(
@@ -598,6 +775,7 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
                 </View>
               )}
             </View>
+            {/* ✅ FAVORİ BUTONU */}
             <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
               <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteActive]}>
                 {isFavorite ? '❤️' : '🤍'}
@@ -784,11 +962,19 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         product={product}
         quantity={quantity}
       />
+
+      {/* ✅ FAVORİ EKLENDİ MODAL */}
+      <AddedToFavoritesModal
+        visible={showFavoriteModal}
+        onClose={handleCloseFavoriteModal}
+        onGoToFavorites={handleGoToFavorites}
+        product={product}
+      />
     </SafeAreaView>
   );
 };
 
-// Styles aynı kalacak, değişiklik yok
+// Styles - YENİ STİLLER EKLENDİ
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -1391,6 +1577,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6366f1',
   },
+  // ✅ YENİ FAVORİ MODAL STİLLERİ
+  modalProductPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6366f1',
+    marginBottom: 2,
+  },
+  modalProductCategory: {
+    fontSize: 14,
+    color: '#64748b',
+  },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
@@ -1416,6 +1613,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   goToCartText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // ✅ FAVORİ BUTON STİLLERİ
+  goToFavoritesButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  goToFavoritesText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',

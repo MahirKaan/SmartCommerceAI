@@ -481,16 +481,16 @@ const CartScreen = ({ navigation }: any) => {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.checkoutButton}
-            onPress={handleCheckout}
-          >
-            <View style={styles.checkoutContent}>
-              <Text style={styles.checkoutButtonText}>💳 Ödemeye Geç</Text>
-              <View style={styles.checkoutBadge}>
-                <Text style={styles.checkoutBadgeText}>₺{total.toLocaleString('tr-TR')}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+  style={styles.checkoutButton}
+  onPress={() => navigation.navigate('Checkout')} // ✅ Checkout screen'e yönlendir
+>
+  <View style={styles.checkoutContent}>
+    <Text style={styles.checkoutButtonText}>💳 Ödemeye Geç</Text>
+    <View style={styles.checkoutBadge}>
+      <Text style={styles.checkoutBadgeText}>₺{total.toLocaleString('tr-TR')}</Text>
+    </View>
+  </View>
+</TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

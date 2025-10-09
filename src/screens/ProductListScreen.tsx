@@ -12,7 +12,8 @@ import {
   Animated,
   SafeAreaView,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { mockProducts } from '../data/mockData'; // ✅ MOCK DATAYI IMPORT ET
 
@@ -111,6 +112,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [favorites, setFavorites] = useState<any[]>([]); // ✅ FAVORİLER STATE'İ EKLENDİ
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // ✅ ROUTE PARAMETRELERİNİ AL VE KATEGORİYİ AYARLA
@@ -119,6 +121,39 @@ const ProductListScreen = ({ navigation, route }: any) => {
       setSelectedCategory(route.params.categoryId);
     }
   }, [route.params]);
+
+  // ✅ FAVORİ EKLE/ÇIKAR FONKSİYONU
+  const toggleFavorite = (product: any) => {
+    setFavorites(prev => {
+      const isAlreadyFavorite = prev.some(fav => fav.id === product.id);
+      
+      if (isAlreadyFavorite) {
+        Alert.alert('Favorilerden Kaldırıldı', `${product.name} favorilerinizden kaldırıldı.`);
+        return prev.filter(fav => fav.id !== product.id);
+      } else {
+        const updatedFavorites = [...prev, product];
+        
+        // ✅ FAVORİ EKLENDİĞİNDE FAVORİLER TAB'INA GİT
+        Alert.alert(
+          'Favorilere Eklendi', 
+          `${product.name} favorilerinize eklendi!`,
+          [
+            { 
+              text: 'Favorileri Gör', 
+              onPress: () => {
+                navigation.navigate('Favorites', { 
+                  favorites: updatedFavorites 
+                });
+              }
+            },
+            { text: 'Tamam', style: 'cancel' }
+          ]
+        );
+        
+        return updatedFavorites;
+      }
+    });
+  };
 
   // Header opacity animation
   const headerOpacity = scrollY.interpolate({
@@ -143,6 +178,17 @@ const ProductListScreen = ({ navigation, route }: any) => {
   const handleAISuggestion = (suggestion: string) => {
     setSearchQuery(suggestion);
     setShowAISuggestions(false);
+  };
+
+  // ✅ FAVORİLER SAYFASINA GİT
+  const handleFavoritesPress = () => {
+    if (favorites.length > 0) {
+      navigation.navigate('Favorites', { 
+        favorites: favorites 
+      });
+    } else {
+      Alert.alert('Favori Yok', 'Henüz favori ürününüz bulunmuyor.');
+    }
   };
 
   // ✅ MOCK DATAYA GÖRE FİLTRELEME
@@ -181,92 +227,109 @@ const ProductListScreen = ({ navigation, route }: any) => {
     }
   });
 
-  const renderProduct = ({ item }: any) => (
-    <TouchableOpacity 
-      style={styles.productCard}
-      onPress={() => navigation.navigate('ProductDetail', { product: item })}
-      activeOpacity={0.9}
-    >
-      <View style={styles.imageContainer}>
-        {/* ✅ RESİM KAYNAĞINI DOĞRUDAN item.image OLARAK VER */}
-        <ProductImage 
-          source={item.image} 
-          style={styles.productImage}
-          resizeMode="cover"
-        />
-        
-        {/* Badge Container */}
-        <View style={styles.badgeContainer}>
-          {item.discountRate && (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountBadgeText}>%{item.discountRate}</Text>
-            </View>
-          )}
-          {item.isFeatured && (
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>🆕 Yeni</Text>
-            </View>
-          )}
-          {item.isFastDelivery && (
-            <View style={styles.deliveryBadge}>
-              <Text style={styles.deliveryBadgeText}>🚚 Hızlı</Text>
-            </View>
-          )}
-        </View>
-
-        {!item.inStock && (
-          <View style={styles.outOfStockOverlay}>
-            <Text style={styles.outOfStockText}>❌ Stokta Yok</Text>
-          </View>
-        )}
-        
-        <View style={styles.ratingBadge}>
-          <Text style={styles.ratingBadgeText}>⭐ {item.rating}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.productInfo}>
-        <Text style={styles.productBrand}>{item.tags?.[0] || item.category}</Text>
-        <Text style={styles.productCategory}>#{item.category}</Text>
-        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        
-        <View style={styles.priceContainer}>
-          <Text style={styles.productPrice}>₺{item.price.toLocaleString('tr-TR')}</Text>
-          {item.originalPrice && (
-            <Text style={styles.originalPrice}>₺{item.originalPrice.toLocaleString('tr-TR')}</Text>
-          )}
-        </View>
-
-        {item.discountRate && item.originalPrice && (
-          <View style={styles.savingsContainer}>
-            <Text style={styles.savingsText}>
-              💰 ₺{(item.originalPrice - item.price).toLocaleString('tr-TR')} tasarruf
+  const renderProduct = ({ item }: any) => {
+    const isFavorite = favorites.some(fav => fav.id === item.id);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetail', { product: item })}
+        activeOpacity={0.9}
+      >
+        <View style={styles.imageContainer}>
+          {/* ✅ RESİM KAYNAĞINI DOĞRUDAN item.image OLARAK VER */}
+          <ProductImage 
+            source={item.image} 
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+          
+          {/* ✅ FAVORİ BUTONU EKLENDİ */}
+          <TouchableOpacity 
+            style={styles.favoriteButton}
+            onPress={() => toggleFavorite(item)}
+          >
+            <Text style={[
+              styles.favoriteIcon,
+              isFavorite && styles.favoriteIconActive
+            ]}>
+              {isFavorite ? '❤️' : '🤍'}
             </Text>
+          </TouchableOpacity>
+          
+          {/* Badge Container */}
+          <View style={styles.badgeContainer}>
+            {item.discountRate && (
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountBadgeText}>%{item.discountRate}</Text>
+              </View>
+            )}
+            {item.isFeatured && (
+              <View style={styles.newBadge}>
+                <Text style={styles.newBadgeText}>🆕 Yeni</Text>
+              </View>
+            )}
+            {item.isFastDelivery && (
+              <View style={styles.deliveryBadge}>
+                <Text style={styles.deliveryBadgeText}>🚚 Hızlı</Text>
+              </View>
+            )}
           </View>
-        )}
 
-        <View style={styles.featuresContainer}>
-          {item.features?.slice(0, 2).map((feature: string, index: number) => (
-            <View key={index} style={styles.featureTag}>
-              <Text style={styles.featureText}>✓ {feature}</Text>
+          {!item.inStock && (
+            <View style={styles.outOfStockOverlay}>
+              <Text style={styles.outOfStockText}>❌ Stokta Yok</Text>
             </View>
-          ))}
-        </View>
-
-        <View style={styles.footerContainer}>
-          <View style={[
-            styles.stockContainer,
-            item.inStock ? styles.inStock : styles.outOfStock
-          ]}>
-            <Text style={styles.stockText}>
-              {item.inStock ? '✅ Stokta' : '❌ Tükendi'}
-            </Text>
+          )}
+          
+          <View style={styles.ratingBadge}>
+            <Text style={styles.ratingBadgeText}>⭐ {item.rating}</Text>
           </View>
-          <Text style={styles.reviewCount}>👥 {item.reviewCount}</Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        
+        <View style={styles.productInfo}>
+          <Text style={styles.productBrand}>{item.tags?.[0] || item.category}</Text>
+          <Text style={styles.productCategory}>#{item.category}</Text>
+          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+          
+          <View style={styles.priceContainer}>
+            <Text style={styles.productPrice}>₺{item.price.toLocaleString('tr-TR')}</Text>
+            {item.originalPrice && (
+              <Text style={styles.originalPrice}>₺{item.originalPrice.toLocaleString('tr-TR')}</Text>
+            )}
+          </View>
+
+          {item.discountRate && item.originalPrice && (
+            <View style={styles.savingsContainer}>
+              <Text style={styles.savingsText}>
+                💰 ₺{(item.originalPrice - item.price).toLocaleString('tr-TR')} tasarruf
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.featuresContainer}>
+            {item.features?.slice(0, 2).map((feature: string, index: number) => (
+              <View key={index} style={styles.featureTag}>
+                <Text style={styles.featureText}>✓ {feature}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.footerContainer}>
+            <View style={[
+              styles.stockContainer,
+              item.inStock ? styles.inStock : styles.outOfStock
+            ]}>
+              <Text style={styles.stockText}>
+                {item.inStock ? '✅ Stokta' : '❌ Tükendi'}
+              </Text>
+            </View>
+            <Text style={styles.reviewCount}>👥 {item.reviewCount}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -290,19 +353,34 @@ const ProductListScreen = ({ navigation, route }: any) => {
                 {route.params?.category ? `${route.params.category} kategorisi` : 'SmartCommerce AI ile akıllı alışveriş'}
               </Text>
             </View>
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{sortedProducts.length}</Text>
-                <Text style={styles.statLabel}>Ürün</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>
-                  {sortedProducts.length > 0 ? 
-                    (sortedProducts.reduce((acc, p) => acc + p.rating, 0) / sortedProducts.length).toFixed(1) : '0'
-                  }
-                </Text>
-                <Text style={styles.statLabel}>Puan</Text>
+            <View style={styles.headerButtons}>
+              {/* ✅ FAVORİ BUTONU HEADER'A EKLENDİ */}
+              <TouchableOpacity 
+                style={styles.headerFavoriteButton}
+                onPress={handleFavoritesPress}
+              >
+                <Text style={styles.headerFavoriteIcon}>❤️</Text>
+                {favorites.length > 0 && (
+                  <View style={styles.favoriteBadge}>
+                    <Text style={styles.favoriteBadgeText}>{favorites.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{sortedProducts.length}</Text>
+                  <Text style={styles.statLabel}>Ürün</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>
+                    {sortedProducts.length > 0 ? 
+                      (sortedProducts.reduce((acc, p) => acc + p.rating, 0) / sortedProducts.length).toFixed(1) : '0'
+                    }
+                  </Text>
+                  <Text style={styles.statLabel}>Puan</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -318,8 +396,8 @@ const ProductListScreen = ({ navigation, route }: any) => {
               <Text style={styles.quickStatText}>{sortedProducts.filter(p => p.discountRate).length} İndirim</Text>
             </View>
             <View style={styles.quickStat}>
-              <Text style={styles.quickStatIcon}>🚚</Text>
-              <Text style={styles.quickStatText}>{sortedProducts.filter(p => p.isFastDelivery).length} Hızlı</Text>
+              <Text style={styles.quickStatIcon}>❤️</Text>
+              <Text style={styles.quickStatText}>{favorites.length} Favori</Text>
             </View>
           </View>
         </View>
@@ -524,7 +602,7 @@ const ProductListScreen = ({ navigation, route }: any) => {
   );
 };
 
-// STYLES KISMI - TAM VE EKSİKSİZ
+// STYLES KISMI - FAVORİ BUTONLARI EKLENDİ
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -554,6 +632,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // ✅ HEADER FAVORİ BUTONU
+  headerFavoriteButton: {
+    position: 'relative',
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  headerFavoriteIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+  },
+  favoriteBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favoriteBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   title: {
     fontSize: 24,
@@ -867,6 +977,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 150,
   },
+  // ✅ FAVORİ BUTONU STİLLERİ
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  favoriteIcon: {
+    fontSize: 16,
+  },
+  favoriteIconActive: {
+    color: '#ef4444',
+  },
   imagePlaceholder: {
     backgroundColor: '#f1f5f9',
     justifyContent: 'center',
@@ -952,7 +1085,7 @@ const styles = StyleSheet.create({
   },
   ratingBadge: {
     position: 'absolute',
-    top: 8,
+    top: 45,
     right: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 12,
